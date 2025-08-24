@@ -30,17 +30,17 @@ class SelfAttention_v2(nn.Module):
         context_vec = attn_weights @ values
         return context_vec
 
-inputs = torch.tensor(
-  [[0.43, 0.15, 0.89], # Your     (x^1)
-   [0.55, 0.87, 0.66], # journey  (x^2)
-   [0.57, 0.85, 0.64], # starts   (x^3)
-   [0.22, 0.58, 0.33], # with     (x^4)
-   [0.77, 0.25, 0.10], # one      (x^5)
-   [0.05, 0.80, 0.55]] # step     (x^6)
-)
-# 设置随机种子以确保结果的可重复性
-torch.manual_seed(789)
-# 创建 SelfAttention_v2 实例
-sa_v2 = SelfAttention_v2(3, 2)
-# 使用输入数据 inputs 进行前向传播，并打印结果
-print(sa_v2(inputs))
+# inputs = torch.tensor(
+#   [[0.43, 0.15, 0.89], # Your     (x^1)
+#    [0.55, 0.87, 0.66], # journey  (x^2)
+#    [0.57, 0.85, 0.64], # starts   (x^3)
+#    [0.22, 0.58, 0.33], # with     (x^4)
+#    [0.77, 0.25, 0.10], # one      (x^5)
+#    [0.05, 0.80, 0.55]] # step     (x^6)
+# )
+# # 设置随机种子以确保结果的可重复性
+# torch.manual_seed(789)
+# # 创建 SelfAttention_v2 实例
+# sa_v2 = SelfAttention_v2(3, 2)
+# # 使用输入数据 inputs 进行前向传播，并打印结果
+# print(sa_v2(inputs))

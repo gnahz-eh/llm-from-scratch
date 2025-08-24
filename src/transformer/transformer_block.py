@@ -36,3 +36,22 @@ class TransformerBlock(nn.Module):
         x = x + shortcut  # 与原始输入块求和
 
         return x
+    
+# GPT_CONFIG_124M = {
+#     "vocab_size": 50257,  # 词表大小
+#     "ctx_len": 1024,      # 上下文长度
+#     "emb_dim": 768,       # 嵌入维度
+#     "n_heads": 12,        # 注意力头（attention heads）的数量
+#     "n_layers": 12,       # 模型层数
+#     "drop_rate": 0.1,     # Dropout rate
+#     "qkv_bias": False     # Query-Key-Value bias
+# }
+
+# torch.manual_seed(123)
+
+# x = torch.rand(2, 4, 768)  # Shape: [batch_size, num_tokens, emb_dim]
+# block = TransformerBlock(GPT_CONFIG_124M)
+# output = block(x)
+
+# print("Input shape:", x.shape)
+# print("Output shape:", output.shape)

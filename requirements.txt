@@ -8,3 +8,5 @@ tqdm >= 4.66.1             # ch05; ch07
 numpy >= 2.3.0             # dependency of several other libraries like torch and pandas
 pandas >= 2.2.1            # ch06
 psutil >= 5.9.5            # ch07; already installed automatically as dependency of torch
+flask >= 2.0.0             # Web UI dashboard
+transformers >= 4.0.0      # Optional: GPT-2 weights loading fallback

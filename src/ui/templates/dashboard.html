@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Training Progress Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            color: #666;
+            font-weight: 300;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .sections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .section-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            border-left: 4px solid #ddd;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .section-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+            pointer-events: none;
+        }
+        
+        .section-item.completed {
+            border-left-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            transform: scale(1.02);
+        }
+        
+        .section-item.running {
+            border-left-color: #ffc107;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            animation: pulse 2s infinite;
+        }
+        
+        .section-item.pending {
+            border-left-color: #6c757d;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        
+        .section-status {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 15px;
+            background: #6c757d;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .section-status::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .section-status.completed {
+            background: #28a745;
+        }
+        
+        .section-status.running {
+            background: #ffc107;
+            animation: statusPulse 1.5s infinite;
+        }
+        
+        @keyframes statusPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin: 20px 0;
+        }
+        
+        .logs-container {
+            max-height: 350px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+            border-radius: 15px;
+            padding: 20px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            border: 1px solid #333;
+        }
+        
+        .log-entry {
+            padding: 8px 0;
+            color: #fff;
+            border-bottom: 1px solid #333;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-timestamp {
+            color: #888;
+            margin-right: 12px;
+            font-weight: 500;
+        }
+        
+        .log-info { color: #17a2b8; }
+        .log-success { color: #28a745; }
+        .log-warning { color: #ffc107; }
+        .log-error { color: #dc3545; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 25px 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 15px 0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .generation-result {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .generation-result:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .generation-input {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        
+        .generation-output {
+            color: #28a745;
+            font-style: italic;
+            border-left: 4px solid #28a745;
+            padding-left: 15px;
+            background: rgba(40, 167, 69, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.05em;
+            line-height: 1.5;
+        }
+        
+        .generation-meta {
+            margin-top: 12px;
+            font-size: 0.9em;
+            color: #666;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .generation-meta span {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .epoch-details {
+            margin-top: 20px;
+        }
+        
+        .epoch-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 0.9em;
+        }
+        
+        .epoch-item:last-child {
+            border-bottom: none;
+        }
+        
+        .epoch-number {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .epoch-losses {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+        }
+        
+        .epoch-time {
+            color: #888;
+            font-size: 0.8em;
+        }
+        
+        .generation-history {
+            margin-top: 20px;
+        }
+        
+        .generation-history-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .generation-history-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .wide-card {
+            grid-column: 1 / -1;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-running {
+            background: rgba(255, 193, 7, 0.1);
+            color: #856404;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        .status-completed {
+            background: rgba(40, 167, 69, 0.1);
+            color: #155724;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-robot"></i> LLM Training Dashboard</h1>
+            <p>Real-time progress monitoring for your Language Model training journey</p>
+        </div>
+        
+        <div class="dashboard-grid">
+            <!-- Sections Progress -->
+            <div class="card">
+                <h3>
+                    <div class="card-icon"><i class="fas fa-tasks"></i></div>
+                    Section Progress
+                </h3>
+                <div class="sections-grid" id="sectionsGrid">
+                    <!-- Sections will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Training Stats -->
+            <div class="card">
+                <h3>
+                    <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+                    Training Statistics
+                </h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="currentEpoch">0</div>
+                        <div class="stat-label">Current Epoch</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalEpochs">10</div>
+                        <div class="stat-label">Total Epochs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="currentLoss">--</div>
+                        <div class="stat-label">Latest Loss</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="tokensProcessed">0</div>
+                        <div class="stat-label">Tokens Seen</div>
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="trainingProgress" style="width: 0%"></div>
+                </div>
+                
+                <!-- Epoch Details -->
+                <div class="epoch-details" id="epochDetails" style="display: none;">
+                    <h4 style="margin-bottom: 15px; color: #333;">Epoch History</h4>
+                    <div id="epochList"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Training Loss Chart -->
+        <div class="card wide-card">
+            <h3>
+                <div class="card-icon"><i class="fas fa-chart-area"></i></div>
+                Training Loss Over Time
+            </h3>
+            <div class="chart-container">
+                <canvas id="lossChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <!-- Generation Results -->
+            <div class="card">
+                <h3>
+                    <div class="card-icon"><i class="fas fa-magic"></i></div>
+                    Text Generation Results
+                </h3>
+                <div id="generationResults">
+                    <p style="color: #666; text-align: center; padding: 40px;">
+                        <i class="fas fa-hourglass-half"></i><br>
+                        Waiting for generation results...
+                    </p>
+                </div>
+                
+                <!-- Generation History -->
+                <div class="generation-history" id="generationHistory" style="display: none;">
+                    <h4 style="margin-bottom: 15px; color: #333;">Recent Generations</h4>
+                    <div id="generationHistoryList"></div>
+                </div>
+            </div>
+            
+            <!-- Live Logs -->
+            <div class="card">
+                <h3>
+                    <div class="card-icon"><i class="fas fa-terminal"></i></div>
+                    Live Logs
+                </h3>
+                <div class="logs-container" id="logsContainer">
+                    <!-- Logs will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Chart.js with beautiful styling
+        const ctx = document.getElementById('lossChart').getContext('2d');
+        const lossChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Training Loss',
+                    data: [],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }, {
+                    label: 'Validation Loss',
+                    data: [],
+                    borderColor: '#764ba2',
+                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#764ba2',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 14,
+                                weight: '500'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Loss',
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Epoch',
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+
+        // Update dashboard data
+        function updateDashboard() {
+            fetch('/api/progress')
+                .then(response => response.json())
+                .then(data => {
+                    updateSections(data.sections);
+                    updateTrainingStats(data.training);
+                    updateLossChart(data.training);
+                    updateGenerationResults(data.generation, data.generation_history);
+                    updateLogs(data.logs);
+                })
+                .catch(error => console.error('Error fetching progress:', error));
+        }
+
+        function updateSections(sections) {
+            const container = document.getElementById('sectionsGrid');
+            
+            container.innerHTML = '';
+            
+            Object.keys(sections).forEach(key => {
+                const sectionData = sections[key];
+                const status = sectionData.status || 'pending';
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = `section-item ${status}`;
+                sectionDiv.innerHTML = `
+                    <div class="section-status ${status}"></div>
+                    <div>
+                        <strong>${key}.</strong> ${sectionData.name}
+                        ${status === 'running' ? '<div class="loading-spinner"></div>' : ''}
+                    </div>
+                `;
+                container.appendChild(sectionDiv);
+            });
+        }
+
+        function updateTrainingStats(training) {
+            document.getElementById('currentEpoch').textContent = training.epoch;
+            document.getElementById('totalEpochs').textContent = training.total_epochs;
+            
+            const latestLoss = training.train_loss.length > 0 
+                ? training.train_loss[training.train_loss.length - 1].toFixed(4)
+                : '--';
+            document.getElementById('currentLoss').textContent = latestLoss;
+            
+            const latestTokens = training.tokens_seen.length > 0 
+                ? training.tokens_seen[training.tokens_seen.length - 1].toLocaleString()
+                : '0';
+            document.getElementById('tokensProcessed').textContent = latestTokens;
+            
+            const progress = (training.epoch / training.total_epochs) * 100;
+            document.getElementById('trainingProgress').style.width = `${progress}%`;
+            
+            // Update epoch details
+            if (training.epoch_details && training.epoch_details.length > 0) {
+                const epochDetails = document.getElementById('epochDetails');
+                const epochList = document.getElementById('epochList');
+                epochDetails.style.display = 'block';
+                
+                epochList.innerHTML = '';
+                training.epoch_details.slice(-5).forEach(epoch => {
+                    const epochDiv = document.createElement('div');
+                    epochDiv.className = 'epoch-item';
+                    epochDiv.innerHTML = `
+                        <div class="epoch-number">Epoch ${epoch.epoch}</div>
+                        <div class="epoch-losses">
+                            <span>Train: ${epoch.train_loss.toFixed(4)}</span>
+                            <span>Val: ${epoch.val_loss.toFixed(4)}</span>
+                        </div>
+                        <div class="epoch-time">${epoch.timestamp}</div>
+                    `;
+                    epochList.appendChild(epochDiv);
+                });
+            }
+        }
+
+        function updateLossChart(training) {
+            const epochs = training.train_loss.map((_, index) => index + 1);
+            
+            lossChart.data.labels = epochs;
+            lossChart.data.datasets[0].data = training.train_loss;
+            lossChart.data.datasets[1].data = training.val_loss;
+            lossChart.update('none');
+        }
+
+        function updateGenerationResults(generation, generationHistory) {
+            const container = document.getElementById('generationResults');
+            
+            if (generation && generation.output_text) {
+                container.innerHTML = `
+                    <div class="generation-result">
+                        <div class="generation-input">
+                            <strong><i class="fas fa-arrow-right"></i> Input:</strong> "${generation.input_text}"
+                        </div>
+                        <div class="generation-output">
+                            <strong><i class="fas fa-magic"></i> Generated:</strong> "${generation.output_text}"
+                        </div>
+                        <div class="generation-meta">
+                            <span><i class="fas fa-thermometer-half"></i> Temperature: ${generation.temperature}</span>
+                            <span><i class="fas fa-layer-group"></i> Top-K: ${generation.top_k}</span>
+                            <span><i class="fas fa-clock"></i> ${generation.timestamp}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <p style="color: #666; text-align: center; padding: 40px;">
+                        <i class="fas fa-hourglass-half"></i><br>
+                        Waiting for generation results...
+                    </p>
+                `;
+            }
+            
+            // Update generation history
+            if (generationHistory && generationHistory.length > 0) {
+                const historyContainer = document.getElementById('generationHistory');
+                const historyList = document.getElementById('generationHistoryList');
+                historyContainer.style.display = 'block';
+                
+                historyList.innerHTML = '';
+                generationHistory.slice(-3).forEach((gen, index) => {
+                    const historyDiv = document.createElement('div');
+                    historyDiv.className = 'generation-history-item';
+                    historyDiv.innerHTML = `
+                        <div style="font-size: 0.9em; margin-bottom: 8px;">
+                            <strong>"${gen.input_text}"</strong> → <em>"${gen.output_text}"</em>
+                        </div>
+                        <div style="font-size: 0.8em; color: #666;">
+                            T: ${gen.temperature}, K: ${gen.top_k} • ${gen.timestamp}
+                        </div>
+                    `;
+                    historyList.appendChild(historyDiv);
+                });
+            }
+        }
+
+        function updateLogs(logs) {
+            const container = document.getElementById('logsContainer');
+            container.innerHTML = '';
+            
+            logs.slice(-15).forEach(log => {
+                const logDiv = document.createElement('div');
+                logDiv.className = `log-entry log-${log.level}`;
+                logDiv.innerHTML = `
+                    <span class="log-timestamp">${log.timestamp}</span>
+                    <span>${log.message}</span>
+                `;
+                container.appendChild(logDiv);
+            });
+            
+            // Auto-scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Update every 1 second
+        setInterval(updateDashboard, 1000);
+        
+        // Initial load
+        updateDashboard();
+    </script>
+</body>
+</html>

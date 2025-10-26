@@ -166,13 +166,26 @@ def calc_loss_loader(data_loader, model, device, num_batches=None): # num_batche
 
 def train_model_simple(model, train_loader, val_loader, optimizer, device, num_epochs,
                        eval_freq, eval_iter, start_context, tokenizer):
+    # Try to import UI functions, but don't fail if not available
+    try:
+        from src.ui.web_app import log_training_epoch, log_message
+        ui_available = True
+    except ImportError:
+        ui_available = False
+    
     # 初始化列表以跟踪损失和已观察到的token
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen, global_step = 0, -1
 
+    if ui_available:
+        log_message(f"🚀 Starting training for {num_epochs} epochs")
+
     # 主要的训练步骤
     for epoch in range(num_epochs):
         model.train()  # 将模型设置为训练模式
+        
+        if ui_available:
+            log_message(f"📈 Starting epoch {epoch + 1}/{num_epochs}")
         
         for input_batch, target_batch in train_loader:
             optimizer.zero_grad() # 每个epoch开始之前重新设置梯度
@@ -191,11 +204,21 @@ def train_model_simple(model, train_loader, val_loader, optimizer, device, num_e
                 track_tokens_seen.append(tokens_seen)
                 print(f"Ep {epoch+1} (Step {global_step:06d}): "
                       f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                
+                # Update UI with training progress
+                if ui_available:
+                    log_training_epoch(epoch + 1, train_loss, val_loss, tokens_seen)
 
         # 在每个epoch完成后打印一个生成的文本示例
         generate_and_print_sample(
             model, tokenizer, device, start_context
         )
+        
+        if ui_available:
+            log_message(f"✅ Completed epoch {epoch + 1}/{num_epochs}")
+
+    if ui_available:
+        log_message("🎉 Training completed successfully!", "success")
 
     return train_losses, val_losses, track_tokens_seen
 

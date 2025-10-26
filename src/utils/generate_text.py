@@ -30,3 +30,35 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
 
     return idx
 
+def generate(model, idx, max_new_tokens, context_size, temperature, top_k=None):
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -context_size:]
+        with torch.no_grad():
+            logits = model(idx_cond)
+        logits = logits[:, -1, :]
+
+        # 使用top_k采样对logits值进行过滤
+        if top_k is not None:
+            # 仅保留top_k的值
+            top_logits, _ = torch.topk(logits, top_k)
+            min_val = top_logits[:, -1]
+            logits = torch.where(logits < min_val, torch.tensor(float('-inf')).to(logits.device), logits)
+
+        # 使用温度缩放
+        if temperature > 0.0:
+            logits = logits / temperature
+
+            # 使用softmax函数得到概率
+            probs = torch.softmax(logits, dim=-1)  # (batch_size, context_len)
+
+            # 从概率分布中采样
+            idx_next = torch.multinomial(probs, num_samples=1)  # (batch_size, 1)
+
+        # 否则和之前的generate_simple函数中的处理相同，使用argmax函数取得概率最大的token
+        else:
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)  # (batch_size, 1)
+
+        # 和之前相同的序列拼接处理
+        idx = torch.cat((idx, idx_next), dim=1)  # (batch_size, num_tokens+1)
+
+    return idx

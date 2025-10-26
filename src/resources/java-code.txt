@@ -1,0 +1,1585 @@
+// A comprehensive Java codebase for training language models
+import java.util.*;
+import java.time.*;
+import java.util.concurrent.*;
+import java.util.stream.*;
+import java.io.*;
+import java.nio.file.*;
+
+// Abstract base class demonstrating inheritance
+abstract class Animal {
+    protected String name;
+    protected int age;
+    protected boolean isAlive;
+
+    public Animal(String name, int age) {
+        this.name = name;
+        this.age = age;
+        this.isAlive = true;
+    }
+
+    public abstract void makeSound();
+    public abstract void move();
+
+    public void eat(String food) {
+        System.out.println(name + " is eating " + food);
+    }
+
+    public void sleep() {
+        System.out.println(name + " is sleeping");
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public boolean isAlive() {
+        return isAlive;
+    }
+
+    public void setAlive(boolean alive) {
+        isAlive = alive;
+    }
+}
+
+// Concrete implementation of Animal
+class Dog extends Animal {
+    private String breed;
+    private boolean isVaccinated;
+
+    public Dog(String name, int age, String breed) {
+        super(name, age);
+        this.breed = breed;
+        this.isVaccinated = false;
+    }
+
+    @Override
+    public void makeSound() {
+        System.out.println(name + " barks: Woof! Woof!");
+    }
+
+    @Override
+    public void move() {
+        System.out.println(name + " runs on four legs");
+    }
+
+    public void fetch(String item) {
+        System.out.println(name + " fetches the " + item);
+    }
+
+    public void wagTail() {
+        System.out.println(name + " wags tail happily");
+    }
+
+    public String getBreed() {
+        return breed;
+    }
+
+    public void vaccinate() {
+        isVaccinated = true;
+        System.out.println(name + " has been vaccinated");
+    }
+
+    public boolean isVaccinated() {
+        return isVaccinated;
+    }
+}
+
+// Another concrete implementation
+class Cat extends Animal {
+    private boolean isIndoor;
+    private int livesRemaining;
+
+    public Cat(String name, int age, boolean isIndoor) {
+        super(name, age);
+        this.isIndoor = isIndoor;
+        this.livesRemaining = 9;
+    }
+
+    @Override
+    public void makeSound() {
+        System.out.println(name + " meows: Meow! Purr...");
+    }
+
+    @Override
+    public void move() {
+        System.out.println(name + " gracefully walks on silent paws");
+    }
+
+    public void climb() {
+        if (livesRemaining > 0) {
+            System.out.println(name + " climbs up high");
+        } else {
+            System.out.println(name + " is too tired to climb");
+        }
+    }
+
+    public void hunt() {
+        if (!isIndoor) {
+            System.out.println(name + " hunts for prey");
+        } else {
+            System.out.println(name + " hunts imaginary mice");
+        }
+    }
+
+    public void useLive() {
+        if (livesRemaining > 0) {
+            livesRemaining--;
+            System.out.println(name + " used a life. " + livesRemaining + " lives remaining");
+        }
+    }
+
+    public int getLivesRemaining() {
+        return livesRemaining;
+    }
+}
+
+// Interface for drawable objects
+interface Drawable {
+    void draw();
+    void rotate(double angle);
+    void scale(double factor);
+}
+
+// Interface for moveable objects
+interface Moveable {
+    void moveBy(double dx, double dy);
+    void moveTo(double x, double y);
+    double getX();
+    double getY();
+}
+
+// Abstract shape class implementing both interfaces
+abstract class Shape implements Drawable, Moveable {
+    protected double x, y;
+    protected String color;
+
+    public Shape(double x, double y, String color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+    }
+
+    public abstract double getArea();
+    public abstract double getPerimeter();
+
+    @Override
+    public void moveBy(double dx, double dy) {
+        this.x += dx;
+        this.y += dy;
+    }
+
+    @Override
+    public void moveTo(double x, double y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    @Override
+    public double getX() {
+        return x;
+    }
+
+    @Override
+    public double getY() {
+        return y;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+}
+
+// Circle implementation
+class Circle extends Shape {
+    private double radius;
+
+    public Circle(double x, double y, double radius, String color) {
+        super(x, y, color);
+        this.radius = radius;
+    }
+
+    @Override
+    public double getArea() {
+        return Math.PI * radius * radius;
+    }
+
+    @Override
+    public double getPerimeter() {
+        return 2 * Math.PI * radius;
+    }
+
+    @Override
+    public void draw() {
+        System.out.printf("Drawing %s circle at (%.2f, %.2f) with radius %.2f%n", 
+                         color, x, y, radius);
+    }
+
+    @Override
+    public void rotate(double angle) {
+        System.out.println("Circle rotation has no visual effect");
+    }
+
+    @Override
+    public void scale(double factor) {
+        radius *= factor;
+        System.out.printf("Circle scaled by %.2f, new radius: %.2f%n", factor, radius);
+    }
+
+    public double getRadius() {
+        return radius;
+    }
+
+    public void setRadius(double radius) {
+        if (radius > 0) {
+            this.radius = radius;
+        }
+    }
+}
+
+// Rectangle implementation
+class Rectangle extends Shape {
+    private double width, height;
+
+    public Rectangle(double x, double y, double width, double height, String color) {
+        super(x, y, color);
+        this.width = width;
+        this.height = height;
+    }
+
+    @Override
+    public double getArea() {
+        return width * height;
+    }
+
+    @Override
+    public double getPerimeter() {
+        return 2 * (width + height);
+    }
+
+    @Override
+    public void draw() {
+        System.out.printf("Drawing %s rectangle at (%.2f, %.2f) with dimensions %.2fx%.2f%n", 
+                         color, x, y, width, height);
+    }
+
+    @Override
+    public void rotate(double angle) {
+        System.out.printf("Rectangle rotated by %.2f degrees%n", angle);
+        // In a real implementation, we might swap width/height for 90-degree rotations
+        if (Math.abs(angle % 180) == 90) {
+            double temp = width;
+            width = height;
+            height = temp;
+        }
+    }
+
+    @Override
+    public void scale(double factor) {
+        width *= factor;
+        height *= factor;
+        System.out.printf("Rectangle scaled by %.2f, new dimensions: %.2fx%.2f%n", 
+                         factor, width, height);
+    }
+
+    public double getWidth() {
+        return width;
+    }
+
+    public double getHeight() {
+        return height;
+    }
+
+    public void setDimensions(double width, double height) {
+        if (width > 0 && height > 0) {
+            this.width = width;
+            this.height = height;
+        }
+    }
+}
+
+// Person class with enhanced functionality
+class Person {
+    private String firstName;
+    private String lastName;
+    private int age;
+    private String email;
+    private LocalDate birthDate;
+    private Address address;
+    private List<String> hobbies;
+    private Map<String, String> contacts;
+
+    public Person(String firstName, String lastName, int age, String email) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.age = age;
+        this.email = email;
+        this.hobbies = new ArrayList<>();
+        this.contacts = new HashMap<>();
+        this.birthDate = LocalDate.now().minusYears(age);
+    }
+
+    public Person(String firstName, String lastName, LocalDate birthDate, String email) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.birthDate = birthDate;
+        this.age = Period.between(birthDate, LocalDate.now()).getYears();
+        this.email = email;
+        this.hobbies = new ArrayList<>();
+        this.contacts = new HashMap<>();
+    }
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
+
+    public void addHobby(String hobby) {
+        if (!hobbies.contains(hobby)) {
+            hobbies.add(hobby);
+        }
+    }
+
+    public void removeHobby(String hobby) {
+        hobbies.remove(hobby);
+    }
+
+    public List<String> getHobbies() {
+        return new ArrayList<>(hobbies);
+    }
+
+    public void addContact(String type, String contact) {
+        contacts.put(type, contact);
+    }
+
+    public String getContact(String type) {
+        return contacts.get(type);
+    }
+
+    public void updateAge() {
+        if (birthDate != null) {
+            this.age = Period.between(birthDate, LocalDate.now()).getYears();
+        }
+    }
+
+    public boolean isAdult() {
+        return age >= 18;
+    }
+
+    public boolean canVote() {
+        return age >= 18;
+    }
+
+    public boolean canDrink() {
+        return age >= 21;
+    }
+
+    // Getters and setters
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        if (age >= 0 && age <= 150) {
+            this.age = age;
+        }
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        if (email != null && email.contains("@")) {
+            this.email = email;
+        }
+    }
+
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+        updateAge();
+    }
+
+    public Address getAddress() {
+        return address;
+    }
+
+    public void setAddress(Address address) {
+        this.address = address;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Person{name='%s', age=%d, email='%s', hobbies=%s}", 
+                           getFullName(), age, email, hobbies);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Person person = (Person) obj;
+        return age == person.age &&
+               Objects.equals(firstName, person.firstName) &&
+               Objects.equals(lastName, person.lastName) &&
+               Objects.equals(email, person.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(firstName, lastName, age, email);
+    }
+}
+
+// Address class to demonstrate composition
+class Address {
+    private String street;
+    private String city;
+    private String state;
+    private String zipCode;
+    private String country;
+
+    public Address(String street, String city, String state, String zipCode, String country) {
+        this.street = street;
+        this.city = city;
+        this.state = state;
+        this.zipCode = zipCode;
+        this.country = country;
+    }
+
+    public String getFullAddress() {
+        return String.format("%s, %s, %s %s, %s", street, city, state, zipCode, country);
+    }
+
+    public boolean isValidZipCode() {
+        return zipCode != null && zipCode.matches("\\d{5}(-\\d{4})?");
+    }
+
+    // Getters and setters
+    public String getStreet() {
+        return street;
+    }
+
+    public void setStreet(String street) {
+        this.street = street;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getZipCode() {
+        return zipCode;
+    }
+
+    public void setZipCode(String zipCode) {
+        this.zipCode = zipCode;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
+    @Override
+    public String toString() {
+        return getFullAddress();
+    }
+}
+
+// Calculator class with advanced operations
+class Calculator {
+    private double memory;
+    private List<String> history;
+
+    public Calculator() {
+        this.memory = 0.0;
+        this.history = new ArrayList<>();
+    }
+
+    public double add(double a, double b) {
+        double result = a + b;
+        recordOperation(a, "+", b, result);
+        return result;
+    }
+
+    public double subtract(double a, double b) {
+        double result = a - b;
+        recordOperation(a, "-", b, result);
+        return result;
+    }
+
+    public double multiply(double a, double b) {
+        double result = a * b;
+        recordOperation(a, "*", b, result);
+        return result;
+    }
+
+    public double divide(double a, double b) {
+        if (b == 0) {
+            throw new IllegalArgumentException("Division by zero is not allowed");
+        }
+        double result = a / b;
+        recordOperation(a, "/", b, result);
+        return result;
+    }
+
+    public double power(double base, double exponent) {
+        double result = Math.pow(base, exponent);
+        recordOperation(base, "^", exponent, result);
+        return result;
+    }
+
+    public double sqrt(double number) {
+        if (number < 0) {
+            throw new IllegalArgumentException("Cannot calculate square root of negative number");
+        }
+        double result = Math.sqrt(number);
+        recordOperation(number, "sqrt", 0, result);
+        return result;
+    }
+
+    public double factorial(int n) {
+        if (n < 0) {
+            throw new IllegalArgumentException("Factorial of negative number is undefined");
+        }
+        double result = 1;
+        for (int i = 2; i <= n; i++) {
+            result *= i;
+        }
+        recordOperation(n, "!", 0, result);
+        return result;
+    }
+
+    public double sin(double angle) {
+        double result = Math.sin(Math.toRadians(angle));
+        recordOperation(angle, "sin", 0, result);
+        return result;
+    }
+
+    public double cos(double angle) {
+        double result = Math.cos(Math.toRadians(angle));
+        recordOperation(angle, "cos", 0, result);
+        return result;
+    }
+
+    public double tan(double angle) {
+        double result = Math.tan(Math.toRadians(angle));
+        recordOperation(angle, "tan", 0, result);
+        return result;
+    }
+
+    public void memoryStore(double value) {
+        memory = value;
+        history.add("Memory stored: " + value);
+    }
+
+    public double memoryRecall() {
+        history.add("Memory recalled: " + memory);
+        return memory;
+    }
+
+    public void memoryClear() {
+        memory = 0.0;
+        history.add("Memory cleared");
+    }
+
+    public void memoryAdd(double value) {
+        memory += value;
+        history.add("Memory + " + value + " = " + memory);
+    }
+
+    public void memorySubtract(double value) {
+        memory -= value;
+        history.add("Memory - " + value + " = " + memory);
+    }
+
+    private void recordOperation(double a, String operator, double b, double result) {
+        String operation;
+        if (operator.equals("sqrt") || operator.equals("sin") || 
+            operator.equals("cos") || operator.equals("tan")) {
+            operation = String.format("%s(%.2f) = %.2f", operator, a, result);
+        } else if (operator.equals("!")) {
+            operation = String.format("%.0f! = %.0f", a, result);
+        } else {
+            operation = String.format("%.2f %s %.2f = %.2f", a, operator, b, result);
+        }
+        history.add(operation);
+    }
+
+    public List<String> getHistory() {
+        return new ArrayList<>(history);
+    }
+
+    public void clearHistory() {
+        history.clear();
+    }
+
+    public void printHistory() {
+        System.out.println("Calculator History:");
+        for (int i = 0; i < history.size(); i++) {
+            System.out.printf("%d. %s%n", i + 1, history.get(i));
+        }
+    }
+}
+
+// Bank account system demonstrating encapsulation and business logic
+abstract class BankAccount {
+    protected String accountNumber;
+    protected String accountHolder;
+    protected double balance;
+    protected LocalDateTime createdDate;
+    protected List<Transaction> transactionHistory;
+
+    public BankAccount(String accountNumber, String accountHolder, double initialBalance) {
+        this.accountNumber = accountNumber;
+        this.accountHolder = accountHolder;
+        this.balance = initialBalance;
+        this.createdDate = LocalDateTime.now();
+        this.transactionHistory = new ArrayList<>();
+        
+        if (initialBalance > 0) {
+            transactionHistory.add(new Transaction("INITIAL_DEPOSIT", initialBalance, 
+                                                 "Account opening deposit"));
+        }
+    }
+
+    public abstract void withdraw(double amount) throws InsufficientFundsException;
+    public abstract double getMaxWithdrawal();
+
+    public void deposit(double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Deposit amount must be positive");
+        }
+        balance += amount;
+        transactionHistory.add(new Transaction("DEPOSIT", amount, "Cash deposit"));
+        System.out.printf("Deposited $%.2f. New balance: $%.2f%n", amount, balance);
+    }
+
+    public void transfer(BankAccount targetAccount, double amount) 
+            throws InsufficientFundsException {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Transfer amount must be positive");
+        }
+        if (targetAccount == null) {
+            throw new IllegalArgumentException("Target account cannot be null");
+        }
+        
+        this.withdraw(amount);
+        targetAccount.deposit(amount);
+        
+        transactionHistory.add(new Transaction("TRANSFER_OUT", -amount, 
+                                             "Transfer to " + targetAccount.getAccountNumber()));
+        targetAccount.transactionHistory.add(new Transaction("TRANSFER_IN", amount, 
+                                                            "Transfer from " + this.accountNumber));
+    }
+
+    public double getBalance() {
+        return balance;
+    }
+
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    public String getAccountHolder() {
+        return accountHolder;
+    }
+
+    public List<Transaction> getTransactionHistory() {
+        return new ArrayList<>(transactionHistory);
+    }
+
+    public void printStatement() {
+        System.out.println("=== BANK STATEMENT ===");
+        System.out.println("Account: " + accountNumber);
+        System.out.println("Holder: " + accountHolder);
+        System.out.println("Current Balance: $" + String.format("%.2f", balance));
+        System.out.println("Account Created: " + createdDate.format(
+            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        System.out.println("\nTransaction History:");
+        
+        for (Transaction transaction : transactionHistory) {
+            System.out.println(transaction);
+        }
+        System.out.println("======================");
+    }
+}
+
+// Checking account implementation
+class CheckingAccount extends BankAccount {
+    private double overdraftLimit;
+    private static final double OVERDRAFT_FEE = 35.0;
+
+    public CheckingAccount(String accountNumber, String accountHolder, 
+                          double initialBalance, double overdraftLimit) {
+        super(accountNumber, accountHolder, initialBalance);
+        this.overdraftLimit = overdraftLimit;
+    }
+
+    @Override
+    public void withdraw(double amount) throws InsufficientFundsException {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Withdrawal amount must be positive");
+        }
+
+        double availableBalance = balance + overdraftLimit;
+        if (amount > availableBalance) {
+            throw new InsufficientFundsException(
+                "Insufficient funds. Available: $" + String.format("%.2f", availableBalance));
+        }
+
+        balance -= amount;
+        transactionHistory.add(new Transaction("WITHDRAWAL", -amount, "ATM withdrawal"));
+
+        if (balance < 0) {
+            balance -= OVERDRAFT_FEE;
+            transactionHistory.add(new Transaction("FEE", -OVERDRAFT_FEE, "Overdraft fee"));
+            System.out.printf("Overdraft fee of $%.2f applied%n", OVERDRAFT_FEE);
+        }
+
+        System.out.printf("Withdrew $%.2f. New balance: $%.2f%n", amount, balance);
+    }
+
+    @Override
+    public double getMaxWithdrawal() {
+        return balance + overdraftLimit;
+    }
+
+    public double getOverdraftLimit() {
+        return overdraftLimit;
+    }
+
+    public void setOverdraftLimit(double overdraftLimit) {
+        this.overdraftLimit = overdraftLimit;
+    }
+}
+
+// Savings account implementation
+class SavingsAccount extends BankAccount {
+    private double interestRate;
+    private int withdrawalCount;
+    private static final int MAX_FREE_WITHDRAWALS = 6;
+    private static final double EXCESS_WITHDRAWAL_FEE = 10.0;
+
+    public SavingsAccount(String accountNumber, String accountHolder, 
+                         double initialBalance, double interestRate) {
+        super(accountNumber, accountHolder, initialBalance);
+        this.interestRate = interestRate;
+        this.withdrawalCount = 0;
+    }
+
+    @Override
+    public void withdraw(double amount) throws InsufficientFundsException {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Withdrawal amount must be positive");
+        }
+        if (amount > balance) {
+            throw new InsufficientFundsException(
+                "Insufficient funds. Available: $" + String.format("%.2f", balance));
+        }
+
+        balance -= amount;
+        withdrawalCount++;
+        transactionHistory.add(new Transaction("WITHDRAWAL", -amount, "Savings withdrawal"));
+
+        if (withdrawalCount > MAX_FREE_WITHDRAWALS) {
+            balance -= EXCESS_WITHDRAWAL_FEE;
+            transactionHistory.add(new Transaction("FEE", -EXCESS_WITHDRAWAL_FEE, 
+                                                 "Excess withdrawal fee"));
+            System.out.printf("Excess withdrawal fee of $%.2f applied%n", EXCESS_WITHDRAWAL_FEE);
+        }
+
+        System.out.printf("Withdrew $%.2f. New balance: $%.2f%n", amount, balance);
+    }
+
+    @Override
+    public double getMaxWithdrawal() {
+        return balance;
+    }
+
+    public void applyInterest() {
+        double interest = balance * (interestRate / 100) / 12; // Monthly interest
+        balance += interest;
+        transactionHistory.add(new Transaction("INTEREST", interest, "Monthly interest"));
+        System.out.printf("Interest of $%.2f applied. New balance: $%.2f%n", interest, balance);
+    }
+
+    public double getInterestRate() {
+        return interestRate;
+    }
+
+    public void setInterestRate(double interestRate) {
+        this.interestRate = interestRate;
+    }
+
+    public int getWithdrawalCount() {
+        return withdrawalCount;
+    }
+
+    public void resetWithdrawalCount() {
+        withdrawalCount = 0;
+    }
+}
+
+// Transaction record class
+class Transaction {
+    private String type;
+    private double amount;
+    private String description;
+    private LocalDateTime timestamp;
+    private String transactionId;
+
+    public Transaction(String type, double amount, String description) {
+        this.type = type;
+        this.amount = amount;
+        this.description = description;
+        this.timestamp = LocalDateTime.now();
+        this.transactionId = generateTransactionId();
+    }
+
+    private String generateTransactionId() {
+        return "TXN" + System.currentTimeMillis() + "_" + 
+               (int)(Math.random() * 1000);
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s | %s | $%s%.2f | %s | %s",
+                           timestamp.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                           transactionId,
+                           amount >= 0 ? "+" : "",
+                           amount,
+                           type,
+                           description);
+    }
+}
+
+// Custom exception for insufficient funds
+class InsufficientFundsException extends Exception {
+    public InsufficientFundsException(String message) {
+        super(message);
+    }
+}
+
+// Library management system
+class Book {
+    private String isbn;
+    private String title;
+    private String author;
+    private String genre;
+    private int publishYear;
+    private boolean isAvailable;
+    private LocalDate dueDate;
+    private String borrowerId;
+
+    public Book(String isbn, String title, String author, String genre, int publishYear) {
+        this.isbn = isbn;
+        this.title = title;
+        this.author = author;
+        this.genre = genre;
+        this.publishYear = publishYear;
+        this.isAvailable = true;
+        this.dueDate = null;
+        this.borrowerId = null;
+    }
+
+    public void borrowBook(String borrowerId, int daysToReturn) {
+        if (!isAvailable) {
+            throw new IllegalStateException("Book is not available for borrowing");
+        }
+        
+        this.isAvailable = false;
+        this.borrowerId = borrowerId;
+        this.dueDate = LocalDate.now().plusDays(daysToReturn);
+        
+        System.out.printf("Book '%s' borrowed by %s. Due date: %s%n", 
+                         title, borrowerId, dueDate);
+    }
+
+    public void returnBook() {
+        if (isAvailable) {
+            throw new IllegalStateException("Book is not currently borrowed");
+        }
+        
+        boolean isLate = LocalDate.now().isAfter(dueDate);
+        if (isLate) {
+            long daysLate = java.time.temporal.ChronoUnit.DAYS.between(dueDate, LocalDate.now());
+            System.out.printf("Book '%s' returned %d days late%n", title, daysLate);
+        } else {
+            System.out.printf("Book '%s' returned on time%n", title);
+        }
+        
+        this.isAvailable = true;
+        this.borrowerId = null;
+        this.dueDate = null;
+    }
+
+    public boolean isOverdue() {
+        return !isAvailable && dueDate != null && LocalDate.now().isAfter(dueDate);
+    }
+
+    public long getDaysUntilDue() {
+        if (isAvailable || dueDate == null) {
+            return 0;
+        }
+        return java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), dueDate);
+    }
+
+    // Getters
+    public String getIsbn() { return isbn; }
+    public String getTitle() { return title; }
+    public String getAuthor() { return author; }
+    public String getGenre() { return genre; }
+    public int getPublishYear() { return publishYear; }
+    public boolean isAvailable() { return isAvailable; }
+    public LocalDate getDueDate() { return dueDate; }
+    public String getBorrowerId() { return borrowerId; }
+
+    @Override
+    public String toString() {
+        String status = isAvailable ? "Available" : 
+                       String.format("Borrowed by %s (Due: %s)", borrowerId, dueDate);
+        return String.format("Book{isbn='%s', title='%s', author='%s', genre='%s', year=%d, status='%s'}",
+                           isbn, title, author, genre, publishYear, status);
+    }
+}
+
+// Library member class
+class LibraryMember {
+    private String memberId;
+    private String name;
+    private String email;
+    private LocalDate joinDate;
+    private List<String> borrowedBooks;
+    private int maxBooksAllowed;
+    private double finesOwed;
+
+    public LibraryMember(String memberId, String name, String email, int maxBooksAllowed) {
+        this.memberId = memberId;
+        this.name = name;
+        this.email = email;
+        this.joinDate = LocalDate.now();
+        this.borrowedBooks = new ArrayList<>();
+        this.maxBooksAllowed = maxBooksAllowed;
+        this.finesOwed = 0.0;
+    }
+
+    public boolean canBorrowMore() {
+        return borrowedBooks.size() < maxBooksAllowed && finesOwed <= 50.0;
+    }
+
+    public void borrowBook(String isbn) {
+        if (!canBorrowMore()) {
+            throw new IllegalStateException("Cannot borrow more books");
+        }
+        borrowedBooks.add(isbn);
+    }
+
+    public void returnBook(String isbn) {
+        borrowedBooks.remove(isbn);
+    }
+
+    public void addFine(double amount) {
+        finesOwed += amount;
+    }
+
+    public void payFine(double amount) {
+        if (amount > finesOwed) {
+            amount = finesOwed;
+        }
+        finesOwed -= amount;
+        System.out.printf("Fine payment of $%.2f received. Remaining balance: $%.2f%n", 
+                         amount, finesOwed);
+    }
+
+    // Getters and setters
+    public String getMemberId() { return memberId; }
+    public String getName() { return name; }
+    public String getEmail() { return email; }
+    public LocalDate getJoinDate() { return joinDate; }
+    public List<String> getBorrowedBooks() { return new ArrayList<>(borrowedBooks); }
+    public int getMaxBooksAllowed() { return maxBooksAllowed; }
+    public double getFinesOwed() { return finesOwed; }
+
+    @Override
+    public String toString() {
+        return String.format("LibraryMember{id='%s', name='%s', borrowed=%d/%d, fines=$%.2f}",
+                           memberId, name, borrowedBooks.size(), maxBooksAllowed, finesOwed);
+    }
+}
+
+// Library system class
+class Library {
+    private String name;
+    private Map<String, Book> books;
+    private Map<String, LibraryMember> members;
+    private List<String> transactionLog;
+
+    public Library(String name) {
+        this.name = name;
+        this.books = new HashMap<>();
+        this.members = new HashMap<>();
+        this.transactionLog = new ArrayList<>();
+    }
+
+    public void addBook(Book book) {
+        books.put(book.getIsbn(), book);
+        logTransaction("BOOK_ADDED", "Added book: " + book.getTitle());
+    }
+
+    public void removeBook(String isbn) {
+        Book removed = books.remove(isbn);
+        if (removed != null) {
+            logTransaction("BOOK_REMOVED", "Removed book: " + removed.getTitle());
+        }
+    }
+
+    public void registerMember(LibraryMember member) {
+        members.put(member.getMemberId(), member);
+        logTransaction("MEMBER_REGISTERED", "Registered member: " + member.getName());
+    }
+
+    public void borrowBook(String isbn, String memberId) {
+        Book book = books.get(isbn);
+        LibraryMember member = members.get(memberId);
+
+        if (book == null) {
+            throw new IllegalArgumentException("Book not found");
+        }
+        if (member == null) {
+            throw new IllegalArgumentException("Member not found");
+        }
+        if (!book.isAvailable()) {
+            throw new IllegalStateException("Book is not available");
+        }
+        if (!member.canBorrowMore()) {
+            throw new IllegalStateException("Member cannot borrow more books");
+        }
+
+        book.borrowBook(memberId, 14); // 14 days loan period
+        member.borrowBook(isbn);
+        logTransaction("BOOK_BORROWED", 
+                      String.format("Book '%s' borrowed by %s", book.getTitle(), member.getName()));
+    }
+
+    public void returnBook(String isbn) {
+        Book book = books.get(isbn);
+        if (book == null) {
+            throw new IllegalArgumentException("Book not found");
+        }
+        if (book.isAvailable()) {
+            throw new IllegalStateException("Book is not currently borrowed");
+        }
+
+        LibraryMember member = members.get(book.getBorrowerId());
+        
+        // Check for late return and apply fine
+        if (book.isOverdue()) {
+            long daysLate = Math.abs(book.getDaysUntilDue());
+            double fine = daysLate * 1.0; // $1 per day late
+            member.addFine(fine);
+            logTransaction("FINE_APPLIED", 
+                          String.format("Late return fine of $%.2f applied to %s", fine, member.getName()));
+        }
+
+        book.returnBook();
+        member.returnBook(isbn);
+        logTransaction("BOOK_RETURNED", 
+                      String.format("Book '%s' returned by %s", book.getTitle(), member.getName()));
+    }
+
+    public List<Book> searchBooksByTitle(String title) {
+        return books.values().stream()
+                   .filter(book -> book.getTitle().toLowerCase().contains(title.toLowerCase()))
+                   .collect(Collectors.toList());
+    }
+
+    public List<Book> searchBooksByAuthor(String author) {
+        return books.values().stream()
+                   .filter(book -> book.getAuthor().toLowerCase().contains(author.toLowerCase()))
+                   .collect(Collectors.toList());
+    }
+
+    public List<Book> getAvailableBooks() {
+        return books.values().stream()
+                   .filter(Book::isAvailable)
+                   .collect(Collectors.toList());
+    }
+
+    public List<Book> getOverdueBooks() {
+        return books.values().stream()
+                   .filter(Book::isOverdue)
+                   .collect(Collectors.toList());
+    }
+
+    private void logTransaction(String type, String description) {
+        String logEntry = String.format("[%s] %s: %s", 
+                                       LocalDateTime.now().format(
+                                           java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                                       type, description);
+        transactionLog.add(logEntry);
+    }
+
+    public void printTransactionLog() {
+        System.out.println("=== LIBRARY TRANSACTION LOG ===");
+        transactionLog.forEach(System.out::println);
+        System.out.println("==============================");
+    }
+
+    // Getters
+    public String getName() { return name; }
+    public Collection<Book> getAllBooks() { return books.values(); }
+    public Collection<LibraryMember> getAllMembers() { return members.values(); }
+}
+
+// Generic data structures and algorithms
+class GenericStack<T> {
+    private List<T> stack;
+    
+    public GenericStack() {
+        this.stack = new ArrayList<>();
+    }
+    
+    public void push(T item) {
+        stack.add(item);
+    }
+    
+    public T pop() {
+        if (isEmpty()) {
+            throw new IllegalStateException("Stack is empty");
+        }
+        return stack.remove(stack.size() - 1);
+    }
+    
+    public T peek() {
+        if (isEmpty()) {
+            throw new IllegalStateException("Stack is empty");
+        }
+        return stack.get(stack.size() - 1);
+    }
+    
+    public boolean isEmpty() {
+        return stack.isEmpty();
+    }
+    
+    public int size() {
+        return stack.size();
+    }
+    
+    public void clear() {
+        stack.clear();
+    }
+    
+    @Override
+    public String toString() {
+        return "Stack" + stack.toString();
+    }
+}
+
+// Generic queue implementation
+class GenericQueue<T> {
+    private List<T> queue;
+    
+    public GenericQueue() {
+        this.queue = new ArrayList<>();
+    }
+    
+    public void enqueue(T item) {
+        queue.add(item);
+    }
+    
+    public T dequeue() {
+        if (isEmpty()) {
+            throw new IllegalStateException("Queue is empty");
+        }
+        return queue.remove(0);
+    }
+    
+    public T front() {
+        if (isEmpty()) {
+            throw new IllegalStateException("Queue is empty");
+        }
+        return queue.get(0);
+    }
+    
+    public boolean isEmpty() {
+        return queue.isEmpty();
+    }
+    
+    public int size() {
+        return queue.size();
+    }
+    
+    public void clear() {
+        queue.clear();
+    }
+    
+    @Override
+    public String toString() {
+        return "Queue" + queue.toString();
+    }
+}
+
+// Utility class for sorting algorithms
+class SortingAlgorithms {
+    
+    public static void bubbleSort(int[] array) {
+        int n = array.length;
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = 0; j < n - i - 1; j++) {
+                if (array[j] > array[j + 1]) {
+                    // Swap elements
+                    int temp = array[j];
+                    array[j] = array[j + 1];
+                    array[j + 1] = temp;
+                }
+            }
+        }
+    }
+    
+    public static void selectionSort(int[] array) {
+        int n = array.length;
+        for (int i = 0; i < n - 1; i++) {
+            int minIndex = i;
+            for (int j = i + 1; j < n; j++) {
+                if (array[j] < array[minIndex]) {
+                    minIndex = j;
+                }
+            }
+            // Swap elements
+            int temp = array[minIndex];
+            array[minIndex] = array[i];
+            array[i] = temp;
+        }
+    }
+    
+    public static void insertionSort(int[] array) {
+        int n = array.length;
+        for (int i = 1; i < n; i++) {
+            int key = array[i];
+            int j = i - 1;
+            while (j >= 0 && array[j] > key) {
+                array[j + 1] = array[j];
+                j--;
+            }
+            array[j + 1] = key;
+        }
+    }
+    
+    public static void quickSort(int[] array, int low, int high) {
+        if (low < high) {
+            int pivotIndex = partition(array, low, high);
+            quickSort(array, low, pivotIndex - 1);
+            quickSort(array, pivotIndex + 1, high);
+        }
+    }
+    
+    private static int partition(int[] array, int low, int high) {
+        int pivot = array[high];
+        int i = low - 1;
+        
+        for (int j = low; j < high; j++) {
+            if (array[j] <= pivot) {
+                i++;
+                // Swap elements
+                int temp = array[i];
+                array[i] = array[j];
+                array[j] = temp;
+            }
+        }
+        
+        // Swap pivot to correct position
+        int temp = array[i + 1];
+        array[i + 1] = array[high];
+        array[high] = temp;
+        
+        return i + 1;
+    }
+    
+    public static void mergeSort(int[] array, int left, int right) {
+        if (left < right) {
+            int middle = left + (right - left) / 2;
+            mergeSort(array, left, middle);
+            mergeSort(array, middle + 1, right);
+            merge(array, left, middle, right);
+        }
+    }
+    
+    private static void merge(int[] array, int left, int middle, int right) {
+        int leftSize = middle - left + 1;
+        int rightSize = right - middle;
+        
+        int[] leftArray = new int[leftSize];
+        int[] rightArray = new int[rightSize];
+        
+        System.arraycopy(array, left, leftArray, 0, leftSize);
+        System.arraycopy(array, middle + 1, rightArray, 0, rightSize);
+        
+        int i = 0, j = 0, k = left;
+        
+        while (i < leftSize && j < rightSize) {
+            if (leftArray[i] <= rightArray[j]) {
+                array[k] = leftArray[i];
+                i++;
+            } else {
+                array[k] = rightArray[j];
+                j++;
+            }
+            k++;
+        }
+        
+        while (i < leftSize) {
+            array[k] = leftArray[i];
+            i++;
+            k++;
+        }
+        
+        while (j < rightSize) {
+            array[k] = rightArray[j];
+            j++;
+            k++;
+        }
+    }
+    
+    public static void printArray(int[] array) {
+        System.out.println(Arrays.toString(array));
+    }
+}
+
+// Main application class demonstrating various Java features
+class JavaCodeDemo {
+    public static void main(String[] args) {
+        System.out.println("=== Java Code Demonstration ===");
+        
+        // Demonstrate animal hierarchy
+        demonstrateAnimals();
+        
+        // Demonstrate shapes
+        demonstrateShapes();
+        
+        // Demonstrate bank accounts
+        demonstrateBankAccounts();
+        
+        // Demonstrate library system
+        demonstrateLibrary();
+        
+        // Demonstrate data structures
+        demonstrateDataStructures();
+        
+        // Demonstrate sorting algorithms
+        demonstrateSorting();
+        
+        System.out.println("=== Demo Complete ===");
+    }
+    
+    private static void demonstrateAnimals() {
+        System.out.println("\n--- Animal Demonstration ---");
+        
+        Dog dog = new Dog("Buddy", 3, "Golden Retriever");
+        Cat cat = new Cat("Whiskers", 2, true);
+        
+        dog.makeSound();
+        dog.move();
+        dog.fetch("ball");
+        dog.wagTail();
+        dog.vaccinate();
+        
+        cat.makeSound();
+        cat.move();
+        cat.climb();
+        cat.hunt();
+        
+        System.out.println("Dog vaccinated: " + dog.isVaccinated());
+        System.out.println("Cat lives remaining: " + cat.getLivesRemaining());
+    }
+    
+    private static void demonstrateShapes() {
+        System.out.println("\n--- Shape Demonstration ---");
+        
+        Circle circle = new Circle(10, 20, 5, "red");
+        Rectangle rectangle = new Rectangle(0, 0, 10, 15, "blue");
+        
+        circle.draw();
+        System.out.printf("Circle area: %.2f%n", circle.getArea());
+        System.out.printf("Circle perimeter: %.2f%n", circle.getPerimeter());
+        
+        rectangle.draw();
+        System.out.printf("Rectangle area: %.2f%n", rectangle.getArea());
+        System.out.printf("Rectangle perimeter: %.2f%n", rectangle.getPerimeter());
+        
+        circle.scale(2.0);
+        rectangle.rotate(90);
+    }
+    
+    private static void demonstrateBankAccounts() {
+        System.out.println("\n--- Bank Account Demonstration ---");
+        
+        try {
+            CheckingAccount checking = new CheckingAccount("CHK001", "John Doe", 1000.0, 500.0);
+            SavingsAccount savings = new SavingsAccount("SAV001", "John Doe", 5000.0, 2.5);
+            
+            checking.deposit(500.0);
+            checking.withdraw(200.0);
+            
+            savings.applyInterest();
+            checking.transfer(savings, 300.0);
+            
+            checking.printStatement();
+            savings.printStatement();
+            
+        } catch (InsufficientFundsException e) {
+            System.out.println("Transaction failed: " + e.getMessage());
+        }
+    }
+    
+    private static void demonstrateLibrary() {
+        System.out.println("\n--- Library System Demonstration ---");
+        
+        Library library = new Library("City Public Library");
+        
+        // Add books
+        library.addBook(new Book("978-0134685991", "Effective Java", "Joshua Bloch", "Programming", 2017));
+        library.addBook(new Book("978-0596009205", "Head First Design Patterns", "Eric Freeman", "Programming", 2004));
+        library.addBook(new Book("978-0132350884", "Clean Code", "Robert Martin", "Programming", 2008));
+        
+        // Register members
+        library.registerMember(new LibraryMember("MEM001", "Alice Smith", "alice@email.com", 5));
+        library.registerMember(new LibraryMember("MEM002", "Bob Johnson", "bob@email.com", 3));
+        
+        // Borrow and return books
+        try {
+            library.borrowBook("978-0134685991", "MEM001");
+            library.borrowBook("978-0596009205", "MEM002");
+            library.returnBook("978-0134685991");
+            
+            List<Book> availableBooks = library.getAvailableBooks();
+            System.out.println("Available books: " + availableBooks.size());
+            
+            library.printTransactionLog();
+            
+        } catch (Exception e) {
+            System.out.println("Library operation failed: " + e.getMessage());
+        }
+    }
+    
+    private static void demonstrateDataStructures() {
+        System.out.println("\n--- Data Structure Demonstration ---");
+        
+        // Stack demonstration
+        GenericStack<String> stringStack = new GenericStack<>();
+        stringStack.push("First");
+        stringStack.push("Second");
+        stringStack.push("Third");
+        
+        System.out.println("Stack: " + stringStack);
+        System.out.println("Popped: " + stringStack.pop());
+        System.out.println("Peek: " + stringStack.peek());
+        
+        // Queue demonstration
+        GenericQueue<Integer> intQueue = new GenericQueue<>();
+        intQueue.enqueue(1);
+        intQueue.enqueue(2);
+        intQueue.enqueue(3);
+        
+        System.out.println("Queue: " + intQueue);
+        System.out.println("Dequeued: " + intQueue.dequeue());
+        System.out.println("Front: " + intQueue.front());
+    }
+    
+    private static void demonstrateSorting() {
+        System.out.println("\n--- Sorting Algorithm Demonstration ---");
+        
+        int[] array1 = {64, 34, 25, 12, 22, 11, 90};
+        int[] array2 = {64, 34, 25, 12, 22, 11, 90};
+        int[] array3 = {64, 34, 25, 12, 22, 11, 90};
+        int[] array4 = {64, 34, 25, 12, 22, 11, 90};
+        
+        System.out.print("Original array: ");
+        SortingAlgorithms.printArray(array1);
+        
+        SortingAlgorithms.bubbleSort(array1);
+        System.out.print("Bubble sort: ");
+        SortingAlgorithms.printArray(array1);
+        
+        SortingAlgorithms.selectionSort(array2);
+        System.out.print("Selection sort: ");
+        SortingAlgorithms.printArray(array2);
+        
+        SortingAlgorithms.insertionSort(array3);
+        System.out.print("Insertion sort: ");
+        SortingAlgorithms.printArray(array3);
+        
+        SortingAlgorithms.quickSort(array4, 0, array4.length - 1);
+        System.out.print("Quick sort: ");
+        SortingAlgorithms.printArray(array4);
+    }
+}
+        System.out.println("Calculator History:");
+        for (int i = 0; i < history.size(); i++) {
+            System.out.printf("%d. %s%n", i + 1, history.get(i));
+        }
+    }
+}

@@ -1,4 +1,4 @@
-# 🤖 LLM from Scratch
+# 🤖 Nano-LLM
 
 A complete implementation of a GPT-style language model built from scratch using PyTorch, featuring a modern web-based training dashboard for real-time monitoring and visualization.
 
@@ -25,7 +25,7 @@ A complete implementation of a GPT-style language model built from scratch using
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    LLM Training System                      │
+│                 Nano-LLM Training System                    │
 ├─────────────────────┬───────────────────┬───────────────────┤
 │   Web Dashboard     │   Core ML Model   │   Training Utils  │
 │                     │                   │                   │
@@ -58,7 +58,7 @@ GPTModel
 ## 📁 Project Structure
 
 ```
-llm-from-scratch/
+nano-llm/
 ├── 📄 README.md                    # This file
 ├── 📄 requirements.txt             # Python dependencies
 ├── 📄 LICENSE                      # MIT license
@@ -120,8 +120,8 @@ llm-from-scratch/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/gnahz-eh/llm-from-scratch.git
-   cd llm-from-scratch
+   git clone https://github.com/gnahz-eh/nano-llm.git
+   cd nano-llm
    ```
 
 2. **Create and activate virtual environment** (recommended):

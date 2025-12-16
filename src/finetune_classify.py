@@ -1,127 +1,376 @@
-# Direct import
+"""
+Fine-tuning GPT model for spam classification.
+
+This script demonstrates the complete pipeline for fine-tuning a pre-trained GPT model
+for binary classification tasks (spam vs ham SMS messages).
+"""
+
+# ============================================================================
+# 1. IMPORTS
+# ============================================================================
+
+# Standard library imports
+import os
+import urllib.request
+import zipfile
+from pathlib import Path
+
+# Third-party imports
+import pandas as pd
+import tiktoken
+import torch
+from torch.utils.data import DataLoader
+
+# Local imports
 from src.finetune import (
     download_and_unzip_spam_data,
     create_balanced_dataset,
     random_split,
     SpamDataset,
 )
-
-# Or module import
-import urllib.request
-import zipfile
-import os
-from pathlib import Path
-
-# Import required modules
-import pandas as pd
-import tiktoken
-from torch.utils.data import DataLoader
-import torch
-
-# Use the existing file in src/resources directory
-data_file_path = "./src/resources/sms_spam_collection/SMSSpamCollection.tsv"
-
-df = pd.read_csv(data_file_path, sep="\t", header=None, names=["Label", "Text"])
-print(df)
+from src.model import GPTModel
+from src.utils.generate_text import generate_text_simple
+from src.utils.token import text_to_token_ids, token_ids_to_text
+from src.utils.train import download_and_load_gpt2, load_weights_into_gpt
 
 
-balanced_df = create_balanced_dataset(df)
-print("--->")
-print(balanced_df["Label"].value_counts())
+# ============================================================================
+# 2. CONFIGURATION
+# ============================================================================
 
+# Dataset configuration
+DATA_FILE_PATH = "./src/resources/sms_spam_collection/SMSSpamCollection.tsv"
+DATA_OUTPUT_PATH = "./src/resources/sms_spam_collection/processed"
 
-balanced_df["Label"] = balanced_df["Label"].map({"ham": 0, "spam": 1})
+# Model configuration
+BASE_CONFIG = {
+    "vocab_size": 50257,  # Vocabulary size
+    "ctx_len": 1024,      # Context length
+    "drop_rate": 0.0,     # Dropout rate
+    "qkv_bias": True,     # Query-key-value bias
+}
 
-train_df, validation_df, test_df = random_split(balanced_df, 0.7, 0.1)
-# 测试大小默认为 0.2
+MODEL_CONFIGS = {
+    "gpt2-small (124M)":  {"emb_dim": 768,  "n_layers": 12, "n_heads": 12},
+    "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
+    "gpt2-large (774M)":  {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
+    "gpt2-xl (1558M)":    {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
+}
 
-data_output_path = "./src/resources/sms_spam_collection/processed"
-
-train_df.to_csv(data_output_path + "/train.csv", index=None)
-validation_df.to_csv(data_output_path + "/validation.csv", index=None)
-test_df.to_csv(data_output_path + "/test.csv", index=None)
-
-tokenizer = tiktoken.get_encoding("gpt2")
-print(tokenizer.encode("<|endoftext|>", allowed_special={"<|endoftext|>"}))
-
-train_dataset = SpamDataset(
-    csv_file=data_output_path + "/train.csv", max_length=None, tokenizer=tokenizer
-)
-
-print(train_dataset.max_length)
-
-val_dataset = SpamDataset(
-    csv_file=data_output_path + "/validation.csv",
-    max_length=train_dataset.max_length,
-    tokenizer=tokenizer,
-)
-test_dataset = SpamDataset(
-    csv_file=data_output_path + "/test.csv",
-    max_length=train_dataset.max_length,
-    tokenizer=tokenizer,
-)
-
-num_workers = 0
-batch_size = 8
-
-torch.manual_seed(123)
-
-train_loader = DataLoader(
-    dataset=train_dataset,
-    batch_size=batch_size,
-    shuffle=True,
-    num_workers=num_workers,
-    drop_last=True,
-)
-
-val_loader = DataLoader(
-    dataset=val_dataset,
-    batch_size=batch_size,
-    num_workers=num_workers,
-    drop_last=False,
-)
-
-test_loader = DataLoader(
-    dataset=test_dataset,
-    batch_size=batch_size,
-    num_workers=num_workers,
-    drop_last=False,
-)
-
-print("Train loader:")
-for input_batch, target_batch in train_loader:
-    pass
-
-print("Input batch dimensions:", input_batch.shape)
-print("Label batch dimensions", target_batch.shape)
-
-print(f"{len(train_loader)} training batches")
-print(f"{len(val_loader)} validation batches")
-print(f"{len(test_loader)} test batches")
-
-
+# Training configuration
 CHOOSE_MODEL = "gpt2-small (124M)"
 INPUT_PROMPT = "Every effort moves"
+BATCH_SIZE = 8
+NUM_WORKERS = 0
+NUM_CLASSES = 2
 
-BASE_CONFIG = {
-    "vocab_size": 50257,     # Vocabulary size
-    "context_length": 1024,  # Context length
-    "drop_rate": 0.0,        # Dropout rate
-    "qkv_bias": True         # Query-key-value bias
-}
+# Data split ratios
+TRAIN_RATIO = 0.7
+VAL_RATIO = 0.1
+# Test ratio is automatically calculated as 1 - train_ratio - val_ratio
 
-model_configs = {
-    "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
-    "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
-    "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
-    "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
-}
+# ============================================================================
+# 3. FUNCTION DEFINITIONS
+# ============================================================================
 
-BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
+def load_and_prepare_data():
+    """Load and prepare the SMS spam dataset."""
+    print("Loading SMS spam dataset...")
+    df = pd.read_csv(DATA_FILE_PATH, sep="\t", header=None, names=["Label", "Text"])
+    print(f"Original dataset shape: {df.shape}")
+    print(df.head())
+    
+    # Create balanced dataset
+    balanced_df = create_balanced_dataset(df)
+    print("\nBalanced dataset label distribution:")
+    print(balanced_df["Label"].value_counts())
+    
+    # Convert labels to numeric values
+    balanced_df["Label"] = balanced_df["Label"].map({"ham": 0, "spam": 1})
+    
+    return balanced_df
 
-# model_size = CHOOSE_MODEL.split(" ")[-1].lstrip("(").rstrip(")")
-# settings, params = download_and_load_gpt2(model_size=model_size, models_dir="gpt2")
 
-# model = GPTModel(BASE_CONFIG)
-# load_weights_into_gpt(model, params)
-# model.eval();
+def split_and_save_data(balanced_df):
+    """Split data into train/validation/test sets and save to CSV files."""
+    print(f"\nSplitting data with ratios - Train: {TRAIN_RATIO}, Val: {VAL_RATIO}")
+    
+    train_df, validation_df, test_df = random_split(
+        balanced_df, TRAIN_RATIO, VAL_RATIO
+    )
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(DATA_OUTPUT_PATH, exist_ok=True)
+    
+    # Save datasets
+    train_df.to_csv(f"{DATA_OUTPUT_PATH}/train.csv", index=None)
+    validation_df.to_csv(f"{DATA_OUTPUT_PATH}/validation.csv", index=None)
+    test_df.to_csv(f"{DATA_OUTPUT_PATH}/test.csv", index=None)
+    
+    print(f"Datasets saved to {DATA_OUTPUT_PATH}/")
+    print(f"Train set: {len(train_df)} samples")
+    print(f"Validation set: {len(validation_df)} samples")
+    print(f"Test set: {len(test_df)} samples")
+    
+    return train_df, validation_df, test_df
+
+
+def initialize_tokenizer():
+    """Initialize the GPT-2 tokenizer."""
+    tokenizer = tiktoken.get_encoding("gpt2")
+    
+    # Test tokenizer with special token
+    special_tokens = tokenizer.encode(
+        "<|endoftext|>", 
+        allowed_special={"<|endoftext|>"}
+    )
+    print(f"\nTokenizer initialized. Special token encoding: {special_tokens}")
+    
+    return tokenizer
+
+
+def create_datasets_and_loaders(tokenizer):
+    """Create datasets and data loaders for training, validation, and testing."""
+    print(f"\nCreating datasets with batch size: {BATCH_SIZE}")
+    
+    # Create datasets
+    train_dataset = SpamDataset(
+        csv_file=f"{DATA_OUTPUT_PATH}/train.csv", 
+        max_length=None, 
+        tokenizer=tokenizer
+    )
+    
+    print(f"Maximum sequence length: {train_dataset.max_length}")
+    
+    val_dataset = SpamDataset(
+        csv_file=f"{DATA_OUTPUT_PATH}/validation.csv",
+        max_length=train_dataset.max_length,
+        tokenizer=tokenizer,
+    )
+    
+    test_dataset = SpamDataset(
+        csv_file=f"{DATA_OUTPUT_PATH}/test.csv",
+        max_length=train_dataset.max_length,
+        tokenizer=tokenizer,
+    )
+    
+    # Set random seed for reproducibility
+    torch.manual_seed(123)
+    
+    # Create data loaders
+    train_loader = DataLoader(
+        dataset=train_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        num_workers=NUM_WORKERS,
+        drop_last=True,
+    )
+    
+    val_loader = DataLoader(
+        dataset=val_dataset,
+        batch_size=BATCH_SIZE,
+        num_workers=NUM_WORKERS,
+        drop_last=False,
+    )
+    
+    test_loader = DataLoader(
+        dataset=test_dataset,
+        batch_size=BATCH_SIZE,
+        num_workers=NUM_WORKERS,
+        drop_last=False,
+    )
+    
+    # Display loader information
+    print(f"Data loaders created:")
+    print(f"  Training batches: {len(train_loader)}")
+    print(f"  Validation batches: {len(val_loader)}")
+    print(f"  Test batches: {len(test_loader)}")
+    
+    # Test batch dimensions
+    for input_batch, target_batch in train_loader:
+        print(f"  Input batch dimensions: {input_batch.shape}")
+        print(f"  Label batch dimensions: {target_batch.shape}")
+        break
+    
+    return train_loader, val_loader, test_loader
+
+
+def load_pretrained_model():
+    """Load and configure the pre-trained GPT model."""
+    print(f"\nLoading pre-trained model: {CHOOSE_MODEL}")
+    
+    # Update base config with selected model
+    config = BASE_CONFIG.copy()
+    config.update(MODEL_CONFIGS[CHOOSE_MODEL])
+    
+    # Extract model size and download weights
+    model_size = CHOOSE_MODEL.split(" ")[-1].lstrip("(").rstrip(")")
+    settings, params, _ = download_and_load_gpt2(
+        model_size=model_size, 
+        models_dir="gpt2"
+    )
+    
+    # Create and load model
+    model = GPTModel(config)
+    load_weights_into_gpt(model, params)
+    model.eval()
+    
+    print(f"Model loaded successfully with config: {config}")
+    
+    return model, config
+
+
+def test_text_generation(model, tokenizer, config):
+    """Test text generation capabilities of the model."""
+    print(f"\n{'='*60}")
+    print("TESTING TEXT GENERATION")
+    print(f"{'='*60}")
+    
+    # Test 1: Simple text generation
+    print(f"\nTest 1 - Input: '{INPUT_PROMPT}'")
+    token_ids = generate_text_simple(
+        model=model,
+        idx=text_to_token_ids(INPUT_PROMPT, tokenizer),
+        max_new_tokens=15,
+        context_size=config["ctx_len"]
+    )
+    print("Generated text:")
+    print(token_ids_to_text(token_ids, tokenizer))
+    
+    # Test 2: Spam classification prompt
+    print(f"\nTest 2 - Spam Classification Test:")
+    spam_prompt = (
+        "Is the following text 'spam'? Answer with 'yes' or 'no':"
+        " 'You are a winner you have been specially"
+        " selected to receive $1000 cash or a $2000 award.'"
+        " Answer with 'yes' or 'no'."
+    )
+    
+    token_ids = generate_text_simple(
+        model=model,
+        idx=text_to_token_ids(spam_prompt, tokenizer),
+        max_new_tokens=23,
+        context_size=config["ctx_len"]
+    )
+    print("Generated response:")
+    print(token_ids_to_text(token_ids, tokenizer))
+
+
+def prepare_model_for_finetuning(model, config):
+    """Prepare the model for fine-tuning by freezing parameters and adding classification head."""
+    print(f"\n{'='*60}")
+    print("PREPARING MODEL FOR FINE-TUNING")
+    print(f"{'='*60}")
+    
+    # Freeze all parameters
+    for param in model.parameters():
+        param.requires_grad = False
+    
+    # Add classification head
+    model.out_head = torch.nn.Linear(
+        in_features=config["emb_dim"], 
+        out_features=NUM_CLASSES
+    )
+    
+    # Unfreeze last transformer block
+    for param in model.trf_blocks[-1].parameters():
+        param.requires_grad = True
+    
+    # Unfreeze final normalization layer
+    for param in model.final_norm.parameters():
+        param.requires_grad = True
+    
+    print(f"Model prepared for fine-tuning:")
+    print(f"  Added classification head: {config['emb_dim']} -> {NUM_CLASSES}")
+    print(f"  Unfrozen last transformer block and final normalization")
+    
+    return model
+
+
+def test_model_output(model, tokenizer):
+    """Test the model output with classification head."""
+    print(f"\n{'='*60}")
+    print("TESTING MODEL OUTPUT")
+    print(f"{'='*60}")
+    
+    # Set random seed for reproducibility
+    torch.manual_seed(123)
+    
+    # Test input
+    test_text = "Do you have time"
+    inputs = tokenizer.encode(test_text)
+    inputs = torch.tensor(inputs).unsqueeze(0)
+    
+    print(f"Input text: '{test_text}'")
+    print(f"Input tokens: {inputs}")
+    print(f"Input dimensions: {inputs.shape}")  # (batch_size, num_tokens)
+    
+    # Forward pass
+    with torch.no_grad():
+        outputs = model(inputs)
+    
+    print(f"Output shape: {outputs.shape}")  # (batch_size, num_tokens, num_classes)
+    print("Model outputs:")
+    print(outputs)
+
+
+# ============================================================================
+# 4. MAIN FUNCTION
+# ============================================================================
+
+def main():
+    """
+    Main function that orchestrates the spam classification fine-tuning pipeline.
+    
+    This function coordinates the complete workflow:
+    - Data loading and preprocessing
+    - Dataset creation and splitting
+    - Model loading and configuration
+    - Fine-tuning preparation
+    - Testing and validation
+    """
+    try:
+        print("=" * 80)
+        print("SPAM CLASSIFICATION FINE-TUNING PIPELINE")
+        print("=" * 80)
+        
+        # ================================================================
+        # SECTION 1: DATA PREPARATION
+        # ================================================================
+        balanced_df = load_and_prepare_data()
+        train_df, validation_df, test_df = split_and_save_data(balanced_df)
+        
+        # ================================================================
+        # SECTION 2: TOKENIZER AND DATASET CREATION
+        # ================================================================
+        tokenizer = initialize_tokenizer()
+        train_loader, val_loader, test_loader = create_datasets_and_loaders(tokenizer)
+        
+        # ================================================================
+        # SECTION 3: MODEL LOADING AND TESTING
+        # ================================================================
+        model, config = load_pretrained_model()
+        test_text_generation(model, tokenizer, config)
+        
+        # ================================================================
+        # SECTION 4: FINE-TUNING PREPARATION
+        # ================================================================
+        model = prepare_model_for_finetuning(model, config)
+        test_model_output(model, tokenizer)
+        
+        # ================================================================
+        # SECTION 5: COMPLETION
+        # ================================================================
+        print(f"\n{'='*80}")
+        print("PIPELINE COMPLETED SUCCESSFULLY")
+        print("=" * 80)
+        print("Model is ready for fine-tuning!")
+        print(f"Next steps: Train the model using the prepared data loaders")
+        
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        raise
+
+
+if __name__ == "__main__":
+    main()

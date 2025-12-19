@@ -29,9 +29,15 @@ from src.finetune import (
     SpamDataset,
 )
 from src.model import GPTModel
-from src.utils.generate_text import generate_text_simple
+from src.utils.generate_text import generate_text_simple, classify_review
 from src.utils.token import text_to_token_ids, token_ids_to_text
-from src.utils.train import download_and_load_gpt2, load_weights_into_gpt
+from src.utils.train import (
+    download_and_load_gpt2,
+    load_weights_into_gpt,
+    calc_accuracy_loader,
+    calc_loss_loader_4_classification,
+    train_classifier_simple
+)
 
 
 # ============================================================================
@@ -41,6 +47,7 @@ from src.utils.train import download_and_load_gpt2, load_weights_into_gpt
 # Dataset configuration
 DATA_FILE_PATH = "./src/resources/sms_spam_collection/SMSSpamCollection.tsv"
 DATA_OUTPUT_PATH = "./src/resources/sms_spam_collection/processed"
+MODEL_OUTPUT_PATH = "./src/resources/self_trained_models"
 
 # Model configuration
 BASE_CONFIG = {
@@ -192,7 +199,7 @@ def create_datasets_and_loaders(tokenizer):
         print(f"  Label batch dimensions: {target_batch.shape}")
         break
     
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader, test_loader, train_dataset
 
 
 def load_pretrained_model():
@@ -314,6 +321,169 @@ def test_model_output(model, tokenizer):
     print(outputs)
 
 
+def evaluate_model_before_training(model, train_loader, val_loader, test_loader, device):
+    """Evaluate model accuracy and loss before fine-tuning."""
+    print(f"\n{'='*60}")
+    print("EVALUATING MODEL BEFORE TRAINING")
+    print(f"{'='*60}")
+    
+    # Set random seed for reproducibility
+    torch.manual_seed(123)
+    
+    # Calculate accuracies
+    train_accuracy = calc_accuracy_loader(train_loader, model, device, num_batches=10)
+    val_accuracy = calc_accuracy_loader(val_loader, model, device, num_batches=10)
+    test_accuracy = calc_accuracy_loader(test_loader, model, device, num_batches=10)
+
+    print(f"Training accuracy: {train_accuracy*100:.2f}%")
+    print(f"Validation accuracy: {val_accuracy*100:.2f}%")
+    print(f"Test accuracy: {test_accuracy*100:.2f}%")
+    
+    # Calculate losses
+    with torch.no_grad():
+        train_loss = calc_loss_loader_4_classification(
+            train_loader, model, device, num_batches=5
+        )
+        val_loss = calc_loss_loader_4_classification(
+            val_loader, model, device, num_batches=5
+        )
+        test_loss = calc_loss_loader_4_classification(
+            test_loader, model, device, num_batches=5
+        )
+
+    print(f"Training loss: {train_loss:.3f}")
+    print(f"Validation loss: {val_loss:.3f}")
+    print(f"Test loss: {test_loss:.3f}")
+    
+    return {
+        'train_accuracy': train_accuracy,
+        'val_accuracy': val_accuracy,
+        'test_accuracy': test_accuracy,
+        'train_loss': train_loss,
+        'val_loss': val_loss,
+        'test_loss': test_loss
+    }
+
+
+def train_classification_model(model, train_loader, val_loader, device, tokenizer):
+    """Train the classification model with fine-tuning."""
+    print(f"\n{'='*60}")
+    print("TRAINING CLASSIFICATION MODEL")
+    print(f"{'='*60}")
+    
+    import time
+    
+    start_time = time.time()
+    
+    # Set random seed for reproducibility
+    torch.manual_seed(123)
+    
+    # Initialize optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.1)
+    
+    # Training configuration
+    num_epochs = 5
+    
+    print(f"Training configuration:")
+    print(f"  Epochs: {num_epochs}")
+    print(f"  Learning rate: 5e-5")
+    print(f"  Weight decay: 0.1")
+    print(f"  Optimizer: AdamW")
+    
+    # Train the model
+    train_losses, val_losses, train_accs, val_accs, examples_seen = train_classifier_simple(
+        model, train_loader, val_loader, optimizer, device,
+        num_epochs=num_epochs, eval_freq=50, eval_iter=5,
+        tokenizer=tokenizer
+    )
+    
+    end_time = time.time()
+    execution_time_minutes = (end_time - start_time) / 60
+    print(f"Training completed in {execution_time_minutes:.2f} minutes.")
+    
+    return {
+        'train_losses': train_losses,
+        'val_losses': val_losses,
+        'train_accs': train_accs,
+        'val_accs': val_accs,
+        'examples_seen': examples_seen,
+        'execution_time': execution_time_minutes
+    }
+
+
+def evaluate_model_after_training(model, train_loader, val_loader, test_loader, device):
+    """Evaluate model performance after fine-tuning."""
+    print(f"\n{'='*60}")
+    print("EVALUATING MODEL AFTER TRAINING")
+    print(f"{'='*60}")
+    
+    train_accuracy = calc_accuracy_loader(train_loader, model, device)
+    val_accuracy = calc_accuracy_loader(val_loader, model, device)
+    test_accuracy = calc_accuracy_loader(test_loader, model, device)
+
+    print(f"Final Training accuracy: {train_accuracy*100:.2f}%")
+    print(f"Final Validation accuracy: {val_accuracy*100:.2f}%")
+    print(f"Final Test accuracy: {test_accuracy*100:.2f}%")
+    
+    return {
+        'train_accuracy': train_accuracy,
+        'val_accuracy': val_accuracy,
+        'test_accuracy': test_accuracy
+    }
+
+
+def test_classification_examples(model, tokenizer, device, max_length):
+    """Test the trained model with example texts."""
+    print(f"\n{'='*60}")
+    print("TESTING CLASSIFICATION EXAMPLES")
+    print(f"{'='*60}")
+    
+    # Test spam example
+    spam_text = (
+        "You are a winner you have been specially"
+        " selected to receive $1000 cash or a $2000 award."
+    )
+    
+    print(f"\nTesting spam example:")
+    print(f"Text: '{spam_text}'")
+    spam_result = classify_review(
+        spam_text, model, tokenizer, device, max_length=max_length
+    )
+    print(f"Classification result: {spam_result}")
+    
+    # Test ham example
+    ham_text = (
+        "Hey, just wanted to check if we're still on"
+        " for dinner tonight? Let me know!"
+    )
+    
+    print(f"\nTesting ham example:")
+    print(f"Text: '{ham_text}'")
+    ham_result = classify_review(
+        ham_text, model, tokenizer, device, max_length=max_length
+    )
+    print(f"Classification result: {ham_result}")
+    
+    return {'spam_example': spam_result, 'ham_example': ham_result}
+
+
+def save_trained_model(model):
+    """Save the trained model to disk."""
+    print(f"\n{'='*60}")
+    print("SAVING TRAINED MODEL")
+    print(f"{'='*60}")
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(MODEL_OUTPUT_PATH, exist_ok=True)
+    
+    model_path = f"{MODEL_OUTPUT_PATH}/review_classifier.pth"
+    torch.save(model.state_dict(), model_path)
+    
+    print(f"Model saved successfully to: {model_path}")
+    
+    return model_path
+
+
 # ============================================================================
 # 4. MAIN FUNCTION
 # ============================================================================
@@ -344,7 +514,7 @@ def main():
         # SECTION 2: TOKENIZER AND DATASET CREATION
         # ================================================================
         tokenizer = initialize_tokenizer()
-        train_loader, val_loader, test_loader = create_datasets_and_loaders(tokenizer)
+        train_loader, val_loader, test_loader, train_dataset = create_datasets_and_loaders(tokenizer)
         
         # ================================================================
         # SECTION 3: MODEL LOADING AND TESTING
@@ -359,14 +529,55 @@ def main():
         test_model_output(model, tokenizer)
         
         # ================================================================
-        # SECTION 5: COMPLETION
+        # SECTION 5: MODEL TRAINING AND EVALUATION
+        # ================================================================
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+        
+        # Evaluate model before training
+        pre_training_metrics = evaluate_model_before_training(
+            model, train_loader, val_loader, test_loader, device
+        )
+        
+        # Train the classification model
+        training_results = train_classification_model(
+            model, train_loader, val_loader, device, tokenizer
+        )
+        
+        # Evaluate model after training
+        post_training_metrics = evaluate_model_after_training(
+            model, train_loader, val_loader, test_loader, device
+        )
+        
+        # Test with example classifications
+        classification_examples = test_classification_examples(
+            model, tokenizer, device, train_dataset.max_length
+        )
+        
+        # Save the trained model
+        model_path = save_trained_model(model)
+        
+        # ================================================================
+        # SECTION 6: COMPLETION
         # ================================================================
         print(f"\n{'='*80}")
-        print("PIPELINE COMPLETED SUCCESSFULLY")
+        print("FINE-TUNING PIPELINE COMPLETED SUCCESSFULLY")
         print("=" * 80)
-        print("Model is ready for fine-tuning!")
-        print(f"Next steps: Train the model using the prepared data loaders")
         
+        # Print summary of results
+        print("\n📊 TRAINING SUMMARY:")
+        print(f"  Training time: {training_results['execution_time']:.2f} minutes")
+        print(f"  Model saved to: {model_path}")
+        
+        print("\n📈 PERFORMANCE IMPROVEMENT:")
+        print(f"  Train accuracy: {pre_training_metrics['train_accuracy']*100:.2f}% → {post_training_metrics['train_accuracy']*100:.2f}%")
+        print(f"  Validation accuracy: {pre_training_metrics['val_accuracy']*100:.2f}% → {post_training_metrics['val_accuracy']*100:.2f}%")
+        print(f"  Test accuracy: {pre_training_metrics['test_accuracy']*100:.2f}% → {post_training_metrics['test_accuracy']*100:.2f}%")
+        
+        print("\n🎯 CLASSIFICATION EXAMPLES:")
+        print(f"  Spam detection: {classification_examples['spam_example']}")
+        print(f"  Ham detection: {classification_examples['ham_example']}")
+
     except Exception as e:
         print(f"Error occurred: {e}")
         raise

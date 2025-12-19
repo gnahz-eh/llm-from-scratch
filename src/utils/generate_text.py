@@ -1,6 +1,28 @@
 import torch
 import torch.nn as nn
 
+def classify_review(text, model, tokenizer, device, max_length=None, pad_token_id=50256):
+    model.eval()
+
+    # 准备模型的输入
+    input_ids = tokenizer.encode(text)
+    supported_context_length = model.pos_emb.weight.shape[1]
+
+    # 如果序列太长则截断
+    input_ids = input_ids[:min(max_length, supported_context_length)]
+
+    # 将序列填充到最长序列
+    input_ids += [pad_token_id] * (max_length - len(input_ids))
+    input_tensor = torch.tensor(input_ids, device=device).unsqueeze(0) # 添加批次维度
+
+    # 模型推理
+    with torch.no_grad():
+        logits = model(input_tensor)[:, -1, :]  # 最后一个输出 token 的 Logits
+    predicted_label = torch.argmax(logits, dim=-1).item()
+
+    # 返回分类结果
+    return "spam" if predicted_label == 1 else "not spam"
+
 def generate_text_simple(model, idx, max_new_tokens, context_size):
     # idx是当前上下文中的索引数组，形状为(B, T)
     for _ in range(max_new_tokens):

@@ -43,7 +43,12 @@ try:
         log_section_complete, 
         log_training_epoch, 
         log_generation_result, 
-        log_message
+        log_message,
+        log_model_result,
+        log_inference_test,
+        log_data_stats,
+        log_loss_stats,
+        log_pretrained_loading
     )
     UI_AVAILABLE = True
 except ImportError:
@@ -66,6 +71,21 @@ except ImportError:
         pass
     
     def log_message(*args, **kwargs): 
+        pass
+    
+    def log_model_result(*args, **kwargs): 
+        pass
+    
+    def log_inference_test(*args, **kwargs): 
+        pass
+    
+    def log_data_stats(*args, **kwargs): 
+        pass
+    
+    def log_loss_stats(*args, **kwargs): 
+        pass
+    
+    def log_pretrained_loading(*args, **kwargs): 
         pass
 
 # ============================================================================
@@ -119,8 +139,10 @@ TEST_PROMPT = "Every effort moves you"
 
 def setup_device_and_seeding():
     """Setup device and seed for reproducibility."""
+    log_section_start(1, "Device Setup & Initialization")
     torch.manual_seed(123)  # For reproducibility
     log_message(f"📱 Device: {device}")
+    log_section_complete(1, "Device Setup & Initialization")
 
 
 def start_web_ui():
@@ -149,15 +171,18 @@ def start_web_ui():
 def initialize_tokenizer():
     """Initialize the GPT-2 tokenizer."""
     global tokenizer
+    log_section_start(2, "Tokenizer Initialization")
     tokenizer = tiktoken.get_encoding("gpt2")
+    log_message("🔤 GPT-2 tokenizer initialized", "success")
+    log_section_complete(2, "Tokenizer Initialization")
 
 def test_initial_model():
     """Test initial untrained model generation capabilities."""
     global model
     
-    log_section_start(4, "Initial Model Testing (Untrained)")
+    log_section_start(3, "Initial Model Testing (Untrained)")
     print("=" * 60)
-    print("4. INITIAL MODEL TESTING (UNTRAINED)")
+    print("3. INITIAL MODEL TESTING (UNTRAINED)")
     print("=" * 60)
 
     # Initialize untrained model
@@ -177,14 +202,19 @@ def test_initial_model():
     untrained_output = token_ids_to_text(token_ids, tokenizer)
     print("Untrained model output:")
     print(untrained_output)
-    log_section_complete(4, "Initial Model Testing (Untrained)")
+    
+    # Log untrained result to UI for later comparison
+    log_model_result('untrained', untrained_output)
+    log_message(f"🤖 UNTRAINED OUTPUT: '{untrained_output}'", "warning")
+    
+    log_section_complete(3, "Initial Model Testing (Untrained)")
 
 
 def test_model_inference():
     """Test model inference with specific input sequences."""
-    log_section_start(5, "Model Inference Testing")
+    log_section_start(4, "Model Inference Testing")
     print("\n" + "=" * 60)
-    print("5. MODEL INFERENCE TESTING")
+    print("4. MODEL INFERENCE TESTING")
     print("=" * 60)
 
     # Test inputs and targets
@@ -209,26 +239,28 @@ def test_model_inference():
     print(f"Target batch 1: {target_text}")
     print(f"Output batch 1: {output_text}")
     
-    # Log inference comparison to dashboard
-    log_message(f"🎯 TARGET: '{target_text}'", "info")
-    log_message(f"🤖 UNTRAINED PREDICTION: '{output_text}'", "warning")
-    
-    # Calculate and log accuracy
+    # Calculate accuracy
     correct_tokens = (predicted_token_ids[0].flatten() == targets[0]).sum().item()
     total_tokens = targets[0].numel()
     accuracy = correct_tokens / total_tokens * 100
     
-    log_message(f"📊 Token-level accuracy: {accuracy:.1f}% ({correct_tokens}/{total_tokens})", "info")
+    print(f"Token-level accuracy: {accuracy:.1f}% ({correct_tokens}/{total_tokens})")
+    
+    # Log inference test results to UI
+    log_inference_test(target_text, output_text, accuracy)
+    log_message(f"🎯 TARGET: '{target_text}'", "info")
+    log_message(f"🤖 UNTRAINED PREDICTION: '{output_text}'", "warning")
+    log_message(f"📊 Token accuracy: {accuracy:.1f}%", "info")
 
-    log_section_complete(5, "Model Inference Testing")
+    log_section_complete(4, "Model Inference Testing")
 
 def prepare_data():
     """Load and prepare training data."""
     global text_data, train_data, val_data
     
-    log_section_start(6, "Data Preparation")
+    log_section_start(5, "Data Preparation")
     print("\n" + "=" * 60)
-    print("6. DATA PREPARATION")
+    print("5. DATA PREPARATION")
     print("=" * 60)
 
     # Load training data
@@ -243,21 +275,26 @@ def prepare_data():
     total_tokens = len(tokenizer.encode(text_data))
     print(f"Characters: {total_char}")
     print(f"Tokens: {total_tokens}")
+    
+    # Log data stats to UI (will be completed in create_data_loaders)
+    log_message(f"📊 Text data loaded: {total_char:,} characters, {total_tokens:,} tokens")
 
     # Split data into train/validation sets
     train_ratio = 0.90
     split_idx = int(train_ratio * len(text_data))
     train_data = text_data[:split_idx]
     val_data = text_data[split_idx:]
-    log_section_complete(6, "Data Preparation")
+    
+    log_message(f"🔄 Data split: {train_ratio*100:.0f}% training, {(1-train_ratio)*100:.0f}% validation")
+    log_section_complete(5, "Data Preparation")
 
 def create_data_loaders():
     """Create training and validation data loaders."""
     global train_loader, val_loader
     
-    log_section_start(7, "Data Loaders")
+    log_section_start(6, "Data Loaders")
     print("\n" + "=" * 60)
-    print("7. DATA LOADERS")
+    print("6. DATA LOADERS")
     print("=" * 60)
 
     torch.manual_seed(123)
@@ -295,17 +332,24 @@ def create_data_loaders():
     # Count total tokens
     train_tokens = sum(input_batch.numel() for input_batch, _ in train_loader)
     val_tokens = sum(input_batch.numel() for input_batch, _ in val_loader)
+    total_chars = len(text_data)
+    total_tokens = len(tokenizer.encode(text_data))
 
     print(f"Training tokens: {train_tokens}")
     print(f"Validation tokens: {val_tokens}")
     print(f"Total tokens: {train_tokens + val_tokens}")
-    log_section_complete(7, "Data Loaders")
+    
+    # Log data statistics to UI
+    log_data_stats(total_chars, total_tokens, train_tokens, val_tokens)
+    log_message(f"📊 Data loaders created: {len(train_loader)} train batches, {len(val_loader)} val batches")
+    
+    log_section_complete(6, "Data Loaders")
 
 def calculate_initial_loss():
     """Calculate loss for untrained model."""
-    log_section_start(8, "Loss Calculation (Untrained Model)")
+    log_section_start(7, "Loss Calculation (Untrained Model)")
     print("\n" + "=" * 60)
-    print("8. LOSS CALCULATION (UNTRAINED MODEL)")
+    print("7. LOSS CALCULATION (UNTRAINED MODEL)")
     print("=" * 60)
 
     torch.manual_seed(123)
@@ -314,13 +358,17 @@ def calculate_initial_loss():
 
     print(f"Training loss: {train_loss}")
     print(f"Validation loss: {val_loss}")
-    log_section_complete(8, "Loss Calculation (Untrained Model)")
+    
+    # Log initial loss statistics to UI
+    log_loss_stats('initial', train_loss, val_loss)
+    
+    log_section_complete(7, "Loss Calculation (Untrained Model)")
 
 def train_model():
     """Train the model from scratch."""
-    log_section_start(9, "Training Code")
+    log_section_start(8, "Training Code")
     print("\n" + "=" * 60)
-    print("9. TRAINING CODE")
+    print("8. TRAINING CODE")
     print("=" * 60)
 
     # Training the model from scratch
@@ -336,13 +384,13 @@ def train_model():
     )
 
     print("Training complete.")
-    log_section_complete(9, "Training Code")
+    log_section_complete(8, "Training Code")
 
 def test_temperature_generation():
     """Test generation with temperature scaling and top-k sampling."""
-    log_section_start(10, "Generation with Temperature Scaling and Top K")
+    log_section_start(9, "Generation with Temperature Scaling and Top K")
     print("\n" + "=" * 60)
-    print("10. GENERATION WITH TEMPERATURE SCALING AND TOP K")
+    print("9. GENERATION WITH TEMPERATURE SCALING AND TOP K")
     print("=" * 60)
 
     # Advanced generation with temperature scaling and top-k sampling
@@ -360,16 +408,18 @@ def test_temperature_generation():
     print("Output text with temperature scaling and top-k:")
     generated_text = token_ids_to_text(token_ids, tokenizer)
     print(generated_text)
-
-    # Log advanced generation result to dashboard
+    
+    # Log advanced generation result to UI for comparison
+    log_model_result('advanced', generated_text)
     log_generation_result(TEST_PROMPT, generated_text, 1.4, 25)
-    log_section_complete(10, "Generation with Temperature Scaling and Top K")
+    
+    log_section_complete(9, "Generation with Temperature Scaling and Top K")
 
 def check_dependency_versions():
     """Check and display dependency versions."""
-    log_section_start(11, "Dependency Versions")
+    log_section_start(10, "Dependency Versions")
     print("\n" + "=" * 60)
-    print("11. DEPENDENCY VERSIONS")
+    print("10. DEPENDENCY VERSIONS")
     print("=" * 60)
 
     try:
@@ -377,21 +427,31 @@ def check_dependency_versions():
     except Exception:
         print("TensorFlow version: Not installed")
     print("tqdm version:", version("tqdm"))
-    log_section_complete(11, "Dependency Versions")
+    log_section_complete(10, "Dependency Versions")
 
 def load_pretrained_weights():
     """Load pre-trained GPT-2 weights."""
-    log_section_start(12, "Loading Pre-trained GPT-2 Weights")
+    log_section_start(11, "Loading Pre-trained GPT-2 Weights")
     print("\n" + "=" * 60)
-    print("12. LOADING PRE-TRAINED GPT-2 WEIGHTS")
+    print("11. LOADING PRE-TRAINED GPT-2 WEIGHTS")
     print("=" * 60)
 
+    # Log loading progress
+    log_pretrained_loading("Starting GPT-2 124M model download...")
+    
     # Load pre-trained weights and settings
     settings, params, _ = download_and_load_gpt2(model_size="124M", models_dir="gpt2")
+    
+    log_pretrained_loading("GPT-2 weights loaded successfully!")
+    
     print("Settings:", settings)
     print("Parameters dictionary keys:", params.keys())
     print("Token embedding shape:", params["wte"].shape)
-    log_section_complete(12, "Loading Pre-trained GPT-2 Weights")
+    
+    log_pretrained_loading(f"Loaded {len(params)} parameter tensors")
+    log_message(f"✅ Pre-trained weights loaded: {len(params)} tensors", "success")
+    
+    log_section_complete(11, "Loading Pre-trained GPT-2 Weights")
     
     return settings, params
 
@@ -399,9 +459,9 @@ def create_pretrained_model(params):
     """Create and load pre-trained model."""
     global gpt, NEW_CONFIG
     
-    log_section_start(13, "Create and Load Pre-trained Model")
+    log_section_start(12, "Create and Load Pre-trained Model")
     print("\n" + "=" * 60)
-    print("13. CREATING PRE-TRAINED MODEL")
+    print("12. CREATING PRE-TRAINED MODEL")
     print("=" * 60)
 
     # Configure model for pre-trained weights
@@ -418,13 +478,13 @@ def create_pretrained_model(params):
 
     print(f"Model created with config: {model_name}")
     print(f"Context length: {NEW_CONFIG['ctx_len']}")
-    log_section_complete(13, "Create and Load Pre-trained Model")
+    log_section_complete(12, "Create and Load Pre-trained Model")
 
 def test_pretrained_generation():
     """Test text generation with pre-trained model."""
-    log_section_start(14, "Text Generation with Pre-trained Model")
+    log_section_start(13, "Text Generation with Pre-trained Model")
     print("\n" + "=" * 60)
-    print("14. TEXT GENERATION WITH PRE-TRAINED MODEL")
+    print("13. TEXT GENERATION WITH PRE-TRAINED MODEL")
     print("=" * 60)
 
     torch.manual_seed(123)
@@ -442,10 +502,19 @@ def test_pretrained_generation():
     print("Generated text:")
     final_generated_text = token_ids_to_text(token_ids, tokenizer)
     print(final_generated_text)
-
-    # Log final generation result to dashboard
+    
+    # Log pretrained generation result for comparison
+    log_model_result('pretrained', final_generated_text)
     log_generation_result(TEST_PROMPT, final_generated_text, 1.5, 50)
-    log_section_complete(14, "Text Generation with Pre-trained Model")
+    
+    # Log comparison summary
+    log_message("🔄 COMPARISON SUMMARY:", "info")
+    log_message("  • Untrained model results captured", "warning")
+    log_message("  • Trained model results captured", "info")
+    log_message("  • Advanced generation results captured", "info")
+    log_message("  • Pre-trained model results captured", "success")
+    
+    log_section_complete(13, "Text Generation with Pre-trained Model")
     
     return final_generated_text
 

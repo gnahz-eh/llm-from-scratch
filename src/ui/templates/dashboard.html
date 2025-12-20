@@ -456,6 +456,37 @@
             color: #155724;
             border: 1px solid rgba(40, 167, 69, 0.3);
         }
+        
+        .model-comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        
+        .model-result-item {
+            padding: 15px;
+            background: rgba(248, 249, 250, 0.8);
+            border-radius: 10px;
+            border-left: 4px solid #ddd;
+            transition: transform 0.2s ease;
+        }
+        
+        .model-result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .model-result-item h5 {
+            font-size: 0.95em;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .model-result-item p {
+            font-size: 0.9em;
+            line-height: 1.4;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -513,6 +544,54 @@
                 </div>
             </div>
         </div>
+
+        <!-- Data Statistics -->
+        <div class="card wide-card">
+            <h3>
+                <div class="card-icon"><i class="fas fa-database"></i></div>
+                Data Statistics & Loss Comparison
+            </h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalCharacters">0</div>
+                    <div class="stat-label">Total Characters</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="totalTokens">0</div>
+                    <div class="stat-label">Total Tokens</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="trainTokens">0</div>
+                    <div class="stat-label">Train Tokens</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="valTokens">0</div>
+                    <div class="stat-label">Val Tokens</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="initialLoss">--</div>
+                    <div class="stat-label">Initial Loss</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="finalLoss">--</div>
+                    <div class="stat-label">Final Loss</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inference Test Results -->
+        <div class="card wide-card">
+            <h3>
+                <div class="card-icon"><i class="fas fa-bullseye"></i></div>
+                Model Inference Test
+            </h3>
+            <div id="inferenceTest">
+                <p style="color: #666; text-align: center; padding: 20px;">
+                    <i class="fas fa-hourglass-half"></i><br>
+                    Waiting for inference test results...
+                </p>
+            </div>
+        </div>
         
         <!-- Training Loss Chart -->
         <div class="card wide-card">
@@ -526,6 +605,20 @@
         </div>
         
         <div class="dashboard-grid">
+            <!-- Model Comparison Results -->
+            <div class="card">
+                <h3>
+                    <div class="card-icon"><i class="fas fa-balance-scale"></i></div>
+                    Model Output Comparison
+                </h3>
+                <div id="modelComparison">
+                    <p style="color: #666; text-align: center; padding: 20px;">
+                        <i class="fas fa-hourglass-half"></i><br>
+                        Waiting for model results...
+                    </p>
+                </div>
+            </div>
+            
             <!-- Generation Results -->
             <div class="card">
                 <h3>
@@ -545,9 +638,11 @@
                     <div id="generationHistoryList"></div>
                 </div>
             </div>
-            
+        </div>
+        
+        <div class="dashboard-grid">
             <!-- Live Logs -->
-            <div class="card">
+            <div class="card wide-card">
                 <h3>
                     <div class="card-icon"><i class="fas fa-terminal"></i></div>
                     Live Logs
@@ -656,6 +751,10 @@
                     updateTrainingStats(data.training);
                     updateLossChart(data.training);
                     updateGenerationResults(data.generation, data.generation_history);
+                    updateDataStats(data.data_stats);
+                    updateLossStats(data.loss_stats);
+                    updateInferenceTest(data.inference_test);
+                    updateModelComparison(data.model_results);
                     updateLogs(data.logs);
                 })
                 .catch(error => console.error('Error fetching progress:', error));
@@ -798,6 +897,109 @@
             
             // Auto-scroll to bottom
             container.scrollTop = container.scrollHeight;
+        }
+
+        function updateDataStats(dataStats) {
+            if (dataStats) {
+                document.getElementById('totalCharacters').textContent = dataStats.total_characters.toLocaleString();
+                document.getElementById('totalTokens').textContent = dataStats.total_tokens.toLocaleString();
+                document.getElementById('trainTokens').textContent = dataStats.train_tokens.toLocaleString();
+                document.getElementById('valTokens').textContent = dataStats.val_tokens.toLocaleString();
+            }
+        }
+
+        function updateLossStats(lossStats) {
+            if (lossStats) {
+                const initialLoss = lossStats.initial_train_loss ? 
+                    lossStats.initial_train_loss.toFixed(3) : '--';
+                const finalLoss = lossStats.final_train_loss ? 
+                    lossStats.final_train_loss.toFixed(3) : '--';
+                
+                document.getElementById('initialLoss').textContent = initialLoss;
+                document.getElementById('finalLoss').textContent = finalLoss;
+            }
+        }
+
+        function updateInferenceTest(inferenceTest) {
+            const container = document.getElementById('inferenceTest');
+            
+            if (inferenceTest && inferenceTest.target_text) {
+                container.innerHTML = `
+                    <div class="generation-result">
+                        <div class="generation-input">
+                            <strong><i class="fas fa-bullseye"></i> Target:</strong> "${inferenceTest.target_text}"
+                        </div>
+                        <div class="generation-output">
+                            <strong><i class="fas fa-robot"></i> Predicted:</strong> "${inferenceTest.predicted_text}"
+                        </div>
+                        <div class="generation-meta">
+                            <span><i class="fas fa-chart-pie"></i> Accuracy: ${inferenceTest.accuracy.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <p style="color: #666; text-align: center; padding: 20px;">
+                        <i class="fas fa-hourglass-half"></i><br>
+                        Waiting for inference test results...
+                    </p>
+                `;
+            }
+        }
+
+        function updateModelComparison(modelResults) {
+            const container = document.getElementById('modelComparison');
+            
+            if (modelResults && (modelResults.untrained_output || modelResults.trained_output || 
+                               modelResults.advanced_output || modelResults.pretrained_output)) {
+                let html = '<div class="model-comparison-grid">';
+                
+                if (modelResults.untrained_output) {
+                    html += `
+                        <div class="model-result-item" style="border-left: 4px solid #ffc107;">
+                            <h5 style="color: #856404; margin-bottom: 8px;">🤖 Untrained Model</h5>
+                            <p style="font-style: italic; color: #666;">"${modelResults.untrained_output}"</p>
+                        </div>
+                    `;
+                }
+                
+                if (modelResults.trained_output) {
+                    html += `
+                        <div class="model-result-item" style="border-left: 4px solid #17a2b8;">
+                            <h5 style="color: #0c5460; margin-bottom: 8px;">📈 Trained Model</h5>
+                            <p style="font-style: italic; color: #666;">"${modelResults.trained_output}"</p>
+                        </div>
+                    `;
+                }
+                
+                if (modelResults.advanced_output) {
+                    html += `
+                        <div class="model-result-item" style="border-left: 4px solid #6610f2;">
+                            <h5 style="color: #3d0a91; margin-bottom: 8px;">🎯 Advanced Generation</h5>
+                            <p style="font-style: italic; color: #666;">"${modelResults.advanced_output}"</p>
+                        </div>
+                    `;
+                }
+                
+                if (modelResults.pretrained_output) {
+                    html += `
+                        <div class="model-result-item" style="border-left: 4px solid #28a745;">
+                            <h5 style="color: #155724; margin-bottom: 8px;">🏆 Pre-trained Model</h5>
+                            <p style="font-style: italic; color: #666;">"${modelResults.pretrained_output}"</p>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = `
+                    <p style="color: #666; text-align: center; padding: 20px;">
+                        <i class="fas fa-hourglass-half"></i><br>
+                        Waiting for model results...
+                    </p>
+                `;
+            }
         }
 
         // Update every 1 second

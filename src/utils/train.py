@@ -331,6 +331,14 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
         )
         decoded_text = token_ids_to_text(token_ids, tokenizer)
         print(decoded_text.replace("\n", " "))
+        
+        # Try to log trained model output to UI
+        try:
+            from src.ui.web_app import log_model_result, log_message
+            log_model_result('trained', decoded_text)
+            log_message(f"📈 TRAINED model output: '{decoded_text}'", "info")
+        except ImportError:
+            pass
     model.train()
 
 

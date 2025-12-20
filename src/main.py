@@ -103,12 +103,15 @@ train_loader = None
 val_loader = None
 
 # Global variables - Models
-model = None
-gpt = None
+model = None # self-trained model
+gpt = None # pre-trained model from GPT-2
 NEW_CONFIG = None
 
 # Global variables - UI
 server_thread = None
+
+# Global variables - Test prompts
+TEST_PROMPT = "Every effort moves you"
 
 # ============================================================================
 # 3. FUNCTION DEFINITIONS
@@ -163,15 +166,17 @@ def test_initial_model():
     model.to(device)
 
     # Test text generation with untrained model
-    start_context = "Every effort moves you"
+    start_context = TEST_PROMPT
     token_ids = generate_text_simple(
         model=model,
         idx=text_to_token_ids(start_context, tokenizer),
         max_new_tokens=10,
         context_size=GPT_CONFIG_124M["ctx_len"]
     )
+    
+    untrained_output = token_ids_to_text(token_ids, tokenizer)
     print("Untrained model output:")
-    print(token_ids_to_text(token_ids, tokenizer))
+    print(untrained_output)
     log_section_complete(4, "Initial Model Testing (Untrained)")
 
 
@@ -197,8 +202,24 @@ def test_model_inference():
 
     print("Logits shape:", logits.shape)
     print("Token predictions:", predicted_token_ids)
-    print(f"Target batch 1: {token_ids_to_text(targets[0], tokenizer)}")
-    print(f"Output batch 1: {token_ids_to_text(predicted_token_ids[0].flatten(), tokenizer)}")
+    
+    target_text = token_ids_to_text(targets[0], tokenizer)
+    output_text = token_ids_to_text(predicted_token_ids[0].flatten(), tokenizer)
+    
+    print(f"Target batch 1: {target_text}")
+    print(f"Output batch 1: {output_text}")
+    
+    # Log inference comparison to dashboard
+    log_message(f"🎯 TARGET: '{target_text}'", "info")
+    log_message(f"🤖 UNTRAINED PREDICTION: '{output_text}'", "warning")
+    
+    # Calculate and log accuracy
+    correct_tokens = (predicted_token_ids[0].flatten() == targets[0]).sum().item()
+    total_tokens = targets[0].numel()
+    accuracy = correct_tokens / total_tokens * 100
+    
+    log_message(f"📊 Token-level accuracy: {accuracy:.1f}% ({correct_tokens}/{total_tokens})", "info")
+
     log_section_complete(5, "Model Inference Testing")
 
 def prepare_data():
@@ -297,8 +318,6 @@ def calculate_initial_loss():
 
 def train_model():
     """Train the model from scratch."""
-    global model
-    
     log_section_start(9, "Training Code")
     print("\n" + "=" * 60)
     print("9. TRAINING CODE")
@@ -306,16 +325,16 @@ def train_model():
 
     # Training the model from scratch
     torch.manual_seed(123)
-    model = GPTModel(GPT_CONFIG_124M)
     model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.1)
 
-    num_epochs = 10
+    num_epochs = 1
     train_losses, val_losses, tokens_seen = train_model_simple(
         model, train_loader, val_loader, optimizer, device,
         num_epochs=num_epochs, eval_freq=5, eval_iter=1,
-        start_context="Every effort moves you", tokenizer=tokenizer
+        start_context=TEST_PROMPT, tokenizer=tokenizer
     )
+
     print("Training complete.")
     log_section_complete(9, "Training Code")
 
@@ -331,7 +350,7 @@ def test_temperature_generation():
 
     token_ids = generate(
         model=model,
-        idx=text_to_token_ids("Every effort moves you", tokenizer),
+        idx=text_to_token_ids(TEST_PROMPT, tokenizer),
         max_new_tokens=15,
         context_size=GPT_CONFIG_124M["ctx_len"],
         top_k=25,
@@ -342,8 +361,8 @@ def test_temperature_generation():
     generated_text = token_ids_to_text(token_ids, tokenizer)
     print(generated_text)
 
-    # Log generation result to UI
-    log_generation_result("Every effort moves you", generated_text, 1.4, 25)
+    # Log advanced generation result to dashboard
+    log_generation_result(TEST_PROMPT, generated_text, 1.4, 25)
     log_section_complete(10, "Generation with Temperature Scaling and Top K")
 
 def check_dependency_versions():
@@ -413,7 +432,7 @@ def test_pretrained_generation():
     # Generate text with advanced parameters
     token_ids = generate(
         model=gpt,
-        idx=text_to_token_ids("Every effort moves you", tokenizer),
+        idx=text_to_token_ids(TEST_PROMPT, tokenizer),
         max_new_tokens=25,
         context_size=NEW_CONFIG["ctx_len"],
         top_k=50,
@@ -424,8 +443,8 @@ def test_pretrained_generation():
     final_generated_text = token_ids_to_text(token_ids, tokenizer)
     print(final_generated_text)
 
-    # Log final generation result
-    log_generation_result("Every effort moves you", final_generated_text, 1.5, 50)
+    # Log final generation result to dashboard
+    log_generation_result(TEST_PROMPT, final_generated_text, 1.5, 50)
     log_section_complete(14, "Text Generation with Pre-trained Model")
     
     return final_generated_text
@@ -477,25 +496,25 @@ def main():
         # ================================================================
         # SECTION 2: MODEL TESTING AND DATA PREPARATION
         # ================================================================
-        test_initial_model()
-        test_model_inference()
-        prepare_data()
-        create_data_loaders()
-        calculate_initial_loss()
+        test_initial_model() # Try to generate text with untrained model
+        test_model_inference() # Try to generate one token with untrained model
+        prepare_data() # Read the local test data and split into train/val
+        create_data_loaders() # Create PyTorch DataLoader for train/val sets
+        calculate_initial_loss() # Calculate loss with untrained model
         
         # ================================================================
         # SECTION 3: TRAINING (OPTIONAL)
         # ================================================================
-        train_model()
-        test_temperature_generation()
+        train_model() # Train the model from scratch, and print related results
+        test_temperature_generation() # Test generation with temperature scaling and top-k sampling
         
         # ================================================================
         # SECTION 4: PRE-TRAINED MODEL TESTING
         # ================================================================
-        check_dependency_versions()
-        settings, params = load_pretrained_weights()
-        create_pretrained_model(params)
-        final_generated_text = test_pretrained_generation()
+        check_dependency_versions() # Check versions of key dependencies
+        settings, params = load_pretrained_weights() # Load pre-trained GPT-2 weights
+        create_pretrained_model(params) # Create model and load pre-trained weights
+        final_generated_text = test_pretrained_generation() # Test generation with pre-trained model
         
         # ================================================================
         # SECTION 5: COMPLETION
